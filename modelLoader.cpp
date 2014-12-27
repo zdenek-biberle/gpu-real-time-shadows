@@ -223,8 +223,10 @@ ModelInfo loadModel(const std::string& filename, std::vector<Vertex>& outVertice
 	std::cout << "\rLoading model: " << filename << std::endl;
 
 	ModelInfo info;
-	info.baseIndex = 0;
+	info.baseIndex = outVertices.size();
 	info.indexCount = 0;
+
+	int old_index_count = outIndices.size();
 
 	//open file
 	std::ifstream file(filename);
@@ -380,8 +382,8 @@ ModelInfo loadModel(const std::string& filename, std::vector<Vertex>& outVertice
 
 		cout << outIndices.size() / 3 << " triangles.\n";
 
-		info.baseIndex = 0;
-		info.indexCount = outIndices.size();
+		
+		info.indexCount = outIndices.size() - old_index_count;
 	
 
 	cout << filename << " loaded. \n";
