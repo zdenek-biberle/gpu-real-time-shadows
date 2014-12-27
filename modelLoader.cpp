@@ -231,7 +231,7 @@ ModelInfo loadModel(const std::string& filename, std::vector<Vertex>& outVertice
 
 
 	if (!file.is_open())
-		return info;
+		throw new std::runtime_error("Could not open model file " + filename);
 
 	std::vector<glm::vec3> vertices;
 	std::vector<glm::vec3> normals;
