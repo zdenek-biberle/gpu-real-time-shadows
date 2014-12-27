@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include <glm\glm.hpp>
+#include <glm/glm.hpp>
 #include <GL/glew.h>
 #include <GL/gl.h>
 #include <iostream>
@@ -44,7 +44,7 @@ struct SimpleVertex
 {
 	SimpleVertex(
 		float x, float y, float z);
-	SimpleVertex::SimpleVertex(
+	SimpleVertex(
 		glm::vec3 p);
 	float _x;
 	float _y;
