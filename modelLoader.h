@@ -44,7 +44,7 @@ struct SimpleVertex
 {
 	SimpleVertex(
 		float x, float y, float z);
-	SimpleVertex::SimpleVertex(
+	SimpleVertex(
 		glm::vec3 p);
 	float _x;
 	float _y;
