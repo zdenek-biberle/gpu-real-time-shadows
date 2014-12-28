@@ -52,6 +52,17 @@ struct SimpleVertex
 	float _pad;
 };
 
+struct ShadowVolumeVertex
+{
+	float x;
+	float y;
+	float z;
+	float w;
+	int multiplicity;
+	int isCap;
+	int padding[2];
+};
+
 // loaduje vertexy, normaly a uvcka
 ModelInfo loadModel(
 	const std::string& filename, 

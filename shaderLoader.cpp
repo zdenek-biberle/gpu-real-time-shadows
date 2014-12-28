@@ -5,12 +5,25 @@
 #include "glUtil.h"
 #include "readFile.h"
 
-GLuint createShaderFromSource(const std::string& source, GLenum type, const std::string& filename)
+const char * shaderTypeToString(GLenum shaderType)
+{
+	switch (shaderType)
+	{
+		case GL_VERTEX_SHADER: return "GL_VERTEX_SHADER";
+		case GL_GEOMETRY_SHADER: return "GL_GEOMETRY_SHADER";
+		case GL_FRAGMENT_SHADER: return "GL_FRAGMENT_SHADER";
+		case GL_COMPUTE_SHADER: return "GL_COMPUTE_SHADER";
+		default: throw std::runtime_error("Neplatný typ shaderu");
+	}
+}
+
+GLuint createShaderFromSource(const std::string& source, GLenum type)
 {
 	auto sourcePtr = (const GLchar*) source.data();
 	auto sourceLength = (GLint) source.size();
 	
 	auto shader = GLCALL(glCreateShader)(type);
+	if (shader == 0) throw std::runtime_error(std::string("Chyba při vytváření shaderu typu ") + shaderTypeToString(type));
 	GLCALL(glShaderSource)(shader, 1, &sourcePtr, &sourceLength);
 	GLCALL(glCompileShader)(shader);
 	
@@ -24,7 +37,7 @@ GLuint createShaderFromSource(const std::string& source, GLenum type, const std:
 		auto log = std::vector<GLchar>(infoLogLength);
 		GLCALL(glGetShaderInfoLog)(shader, infoLogLength, nullptr, log.data());
 			
-		auto exStr = "Kompilace shaderu " + filename + " failnula: \n";
+		auto exStr = std::string("Kompilace shaderu ") + shaderTypeToString(type) + " failnula: \n";
 		exStr.append(log.begin(), log.end());
 		
 		throw std::runtime_error(exStr);
@@ -36,9 +49,16 @@ GLuint createShaderFromSource(const std::string& source, GLenum type, const std:
 GLuint createProgram(
 	const std::vector<std::string>& vertexShaders, 
 	const std::vector<std::string>& geometryShaders,
-	const std::vector<std::string>& fragmentShaders)
+	const std::vector<std::string>& fragmentShaders,
+	const std::vector<std::string>& computeShaders)
 {
 	std::vector<GLuint> shaders;
+	shaders.reserve(
+		vertexShaders.size() + 
+		geometryShaders.size() + 
+		fragmentShaders.size() + 
+		computeShaders.size());
+		
 	try
 	{
 		for (auto& source : vertexShaders)
@@ -49,6 +69,9 @@ GLuint createProgram(
 			
 		for (auto& source : fragmentShaders)
 			shaders.push_back(createShaderFromSource(source, GL_FRAGMENT_SHADER));
+			
+		for (auto& source : computeShaders)
+			shaders.push_back(createShaderFromSource(source, GL_COMPUTE_SHADER));
 	
 		auto program = GLCALL(glCreateProgram)();
 		for (auto shader : shaders)
@@ -81,31 +104,4 @@ GLuint createProgram(
 			
 		throw;
 	}
-}
-
-GLuint createTextureProgram(const std::string& textureShaderSource)
-{
-	static std::string headersSource = readFile("glsl/textureCore/headers.glsl");
-	
-	auto modifiedTextureShaderSource = "#version 330\n" + headersSource + "#line 1\n" + textureShaderSource;
-	
-	std::vector<std::string> vertexShaders;
-	std::vector<std::string> geometryShaders;
-	std::vector<std::string> fragmentShaders;
-	
-	vertexShaders.push_back(readFile("glsl/shared/vert.glsl"));
-	vertexShaders.push_back(readFile("glsl/textureCore/vert.glsl"));
-	
-	fragmentShaders.push_back(readFile("glsl/textureCore/noise2D.glsl"));
-	fragmentShaders.push_back(readFile("glsl/textureCore/noise3D.glsl"));
-	fragmentShaders.push_back(readFile("glsl/textureCore/noise4D.glsl"));
-	fragmentShaders.push_back(readFile("glsl/textureCore/noiseFuncs.glsl"));
-	fragmentShaders.push_back(readFile("glsl/textureCore/rotationMatrix.glsl"));
-	fragmentShaders.push_back(readFile("glsl/textureCore/positiveTrig.glsl"));
-	fragmentShaders.push_back(readFile("glsl/textureCore/rand.glsl"));
-	fragmentShaders.push_back(readFile("glsl/textureCore/linearsmoothstep.glsl"));
-	fragmentShaders.push_back(readFile("glsl/textureCore/frag.glsl"));
-	fragmentShaders.push_back(modifiedTextureShaderSource);
-	
-	return createProgram(vertexShaders, geometryShaders, fragmentShaders);
 }
