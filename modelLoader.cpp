@@ -37,16 +37,6 @@ Vertex::Vertex(
 	_v(v)
 {}
 
-SimpleVertex::SimpleVertex(
-	float x, float y, float z):
-	_x(x),
-	_y(y),
-	_z(z)
-{}
-
-SimpleVertex::SimpleVertex(glm::vec3 p) : _x(p.x), _y(p.y), _z(p.z)
-{}
-
 Vertex::Vertex(
 	glm::vec3 point,
 	glm::vec3 normal,

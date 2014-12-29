@@ -272,14 +272,17 @@ int main(int argc, char** argv)
 				ShadowVolumeComputationInfo defaultInfo;
 				defaultInfo.vertCount = 0;
 				
+				GLCALL(glMemoryBarrier)(GL_ALL_BARRIER_BITS);
+				
 				GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, shadowVolumeComputationInfo);
 				GLCALL(glBufferData)(GL_SHADER_STORAGE_BUFFER, sizeof(ShadowVolumeComputationInfo), nullptr, GL_DYNAMIC_READ);
 				GLCALL(glBufferData)(GL_SHADER_STORAGE_BUFFER, sizeof(ShadowVolumeComputationInfo), &defaultInfo, GL_DYNAMIC_READ);
 				GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, 0);
 				
 				GLCALL(glUseProgram)(volumeComputationProgram);
-				GLCALL(glBindBufferBase)(GL_SHADER_STORAGE_BUFFER, 0, vbo);
-				GLCALL(glBindBufferBase)(GL_SHADER_STORAGE_BUFFER, 1, ibo);
+				
+				GLCALL(glBindBufferRange)(GL_SHADER_STORAGE_BUFFER, 0, vbo, 0, sizeof(Vertex) * vertices.size());
+				GLCALL(glBindBufferRange)(GL_SHADER_STORAGE_BUFFER, 1, ibo, 0, sizeof(GLuint) * indices.size());
 				GLCALL(glBindBufferBase)(GL_SHADER_STORAGE_BUFFER, 2, shadowVolumeBuffer);
 				GLCALL(glBindBufferBase)(GL_SHADER_STORAGE_BUFFER, 3, shadowVolumeComputationInfo);
 				
@@ -300,14 +303,14 @@ int main(int argc, char** argv)
 				
 				// debug vypisy
 				GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, shadowVolumeComputationInfo);
-				auto info = reinterpret_cast<ShadowVolumeComputationInfo*>(GLCALL(glMapBuffer)(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY));
-				std::cout << info->vertCount << std::endl;
+				auto info = *reinterpret_cast<ShadowVolumeComputationInfo*>(GLCALL(glMapBuffer)(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY));
 				GLCALL(glUnmapBuffer)(GL_SHADER_STORAGE_BUFFER);
 				GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, 0);
+				std::cout << info.vertCount << std::endl;
 				
 				GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, shadowVolumeBuffer);
 				auto verts = reinterpret_cast<ShadowVolumeVertex*>(GLCALL(glMapBuffer)(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY));
-				for (unsigned i = 0; i < 20; i++)
+				for (unsigned i = 0; i < info.vertCount; i++)
 					std::cout << verts[i].x << ", " << verts[i].y << ", " << verts[i].z << ": " << verts[i].multiplicity << ", " << verts[i].isCap << std::endl;
 				GLCALL(glUnmapBuffer)(GL_SHADER_STORAGE_BUFFER);
 				GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, 0);
