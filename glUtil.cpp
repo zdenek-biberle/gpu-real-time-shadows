@@ -33,6 +33,7 @@ void GLAPIENTRY debugFunc(GLenum source, GLenum type, GLuint id, GLenum severity
 	}
 	
 	std::cout << errorType << " in " << srcName << " - " << id << " [" << typeSeverity << "]: " << std::string(message, length);
+	
 }
 
 const char* glErrorToString(GLenum err)
