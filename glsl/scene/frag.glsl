@@ -5,7 +5,6 @@ uniform vec3 lightDir;
 in VertexOutput
 {
 	vec4 position;
-	vec2 texCoord;
 	vec3 normal;
 } IN;
 

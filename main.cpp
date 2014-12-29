@@ -32,6 +32,7 @@
 #include "readFile.h"
 #include "modelLoader.h"
 #include "shaderLoader.h"
+#include "Shader.h"
 
 struct ShadowVolumeComputationInfo
 {
@@ -61,15 +62,16 @@ int main(int argc, char** argv)
 		windowWidth, windowHeight,
 		SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL/* | SDL_WINDOW_RESIZABLE*/);  //dont know how to resize framebuffer texture right now..
 
-
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
-
+	
+	//SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+	//SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+	//SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);	//must be enablet to allow debug output callback
+	//SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
+	
 
 	auto glCtx = SDL_GL_CreateContext(window);
+	
 	//glewExperimental = GL_TRUE;
 	GLenum err = glewInit();
 	if (GLEW_OK != err)
@@ -98,11 +100,43 @@ int main(int argc, char** argv)
 
 	std::cout << "Vytváříme buffery" << std::endl;
 
+
 	GLuint stencilFrameBufferID;
 	GLuint stencilTextureID;
 
+	ShaderProgram simpleProgram("simple");
+	ShaderProgram lightingProgram("lighting");
+
+	{
+		Shader Vshader(GL_VERTEX_SHADER, "./glsl/scene/simple.vert");
+		Shader Fshader(GL_FRAGMENT_SHADER, "./glsl/scene/simple.frag");
+	
+		simpleProgram.addShader(&Vshader);
+		simpleProgram.addShader(&Fshader);
+
+		if (!simpleProgram.linkProgram()){
+			std::cin.ignore();
+			exit(1);
+		}
+	}
+
+
+	{
+		Shader Vshader(GL_VERTEX_SHADER, "./glsl/scene/vert.glsl");
+		Shader Fshader(GL_FRAGMENT_SHADER, "./glsl/scene/frag.glsl");
+
+		lightingProgram.addShader(&Vshader);
+		lightingProgram.addShader(&Fshader);
+
+		if (!lightingProgram.linkProgram()){
+			std::cin.ignore();
+			exit(1);
+		}
+	}
+	
+
 	//http://www.opengl-tutorial.org/intermediate-tutorials/tutorial-14-render-to-texture/
-	try{
+
 		// The framebuffer, which regroups 0, 1, or more textures, and 0 or 1 depth buffer.
 
 		glGenFramebuffers(1, &stencilFrameBufferID);
@@ -148,8 +182,10 @@ int main(int argc, char** argv)
 			//- it's simple write into layout(location = 0) out float stencil; 
 			//unbind framebuffer to be able to bind texture..
 
+		//culling
 		//use that texture when drawing scene again to decide what is in shade 
-		//done -culling 
+		//use new program, bind texture, draw
+		//done 
 
 		//this bit should clear it between runs
 		GLfloat clearColor = 0.0f;
@@ -163,11 +199,7 @@ int main(int argc, char** argv)
 
 		glBindTexture(GL_TEXTURE_2D, 0);
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);	//sets drawing back to screen
-	}
-	catch (std::exception& ex)
-	{
-		std::cerr << ex.what() << std::endl;
-	}
+
 
 	
 
@@ -210,7 +242,6 @@ int main(int argc, char** argv)
 	auto ticks = SDL_GetTicks();
 	auto ticksDelta = 0;
 	
-	GLuint baseProgram = 0;
 	GLuint volumeComputationProgram = 0;
 	
 	auto run = true;
@@ -302,37 +333,13 @@ int main(int argc, char** argv)
 				std::cout << "Nahráváme shadery" << std::endl;
 				loadShaders = false;
 				
-				if (baseProgram != 0)					
-				{
-					GLCALL(glDeleteProgram)(baseProgram);
-					baseProgram = 0;
-				}
-				
+								
 				if (volumeComputationProgram != 0)
 				{
 					GLCALL(glDeleteProgram)(volumeComputationProgram);
 					volumeComputationProgram = 0;
 				}
-				
-				try
-				{
-					std::vector<std::string> vertexShaders;
-					std::vector<std::string> fragmentShaders;
-					
-					vertexShaders.push_back(readFile("./glsl/scene/vert.glsl"));
-					fragmentShaders.push_back(readFile("./glsl/scene/frag.glsl"));
-					
-					baseProgram = createProgram(
-						vertexShaders, 
-						std::vector<std::string>(), 
-						fragmentShaders, 
-						std::vector<std::string>());
-				}
-				catch (std::exception& ex)
-				{
-					std::cerr << "Chyba kompilace programu pro renderování scény: " << ex.what() << std::endl;
-				}
-				
+								
 				try
 				{
 					std::vector<std::string> computeShaders;
@@ -397,13 +404,49 @@ int main(int argc, char** argv)
 				GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, 0);
 			}
 			
-			if (baseProgram != 0)
-			{
-				GLCALL(glUseProgram)(baseProgram);
-			
-				auto mvLocation = GLCALL(glGetUniformLocation)(baseProgram, "mvMat");
-				auto mvNormLocation = GLCALL(glGetUniformLocation)(baseProgram, "mvNormMat");
-				auto pLocation = GLCALL(glGetUniformLocation)(baseProgram, "pMat");
+
+
+			simpleProgram.useProgram();
+
+			auto mvLocation = GLCALL(glGetUniformLocation)(simpleProgram.id, "mvMat");
+			auto pLocation = GLCALL(glGetUniformLocation)(simpleProgram.id, "pMat");
+
+			auto mvMat = view * model;
+			auto pMat = projection;
+
+			GLCALL(glUniformMatrix4fv)(mvLocation, 1, GL_FALSE, glm::value_ptr(mvMat));
+			GLCALL(glUniformMatrix4fv)(pLocation, 1, GL_FALSE, glm::value_ptr(pMat));
+
+			GLCALL(glBindBuffer)(GL_ARRAY_BUFFER, vbo);
+			GLCALL(glBindBuffer)(GL_ELEMENT_ARRAY_BUFFER, ibo);
+
+			auto numArrays = 1;
+
+			for (int i = 0; i < numArrays; i++)
+				GLCALL(glEnableVertexAttribArray)(i);
+
+			// pozice
+			GLCALL(glVertexAttribPointer)(0u, 3, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, _x)));
+		
+			for (auto modelInfo : scene) {
+				GLCALL(glDrawElements)(GL_TRIANGLES, (GLsizei)modelInfo.indexCount, GL_UNSIGNED_INT, reinterpret_cast<void*>(modelInfo.baseIndex * sizeof(GLuint)));
+			}
+
+			for (int i = 0; i < numArrays; i++)
+				GLCALL(glDisableVertexAttribArray)(i);
+
+			GLCALL(glUseProgram)(0);
+
+
+
+
+
+
+
+			/*
+			auto mvLocation = GLCALL(glGetUniformLocation)(simpleProgram.id, "mvMat");
+			auto mvNormLocation = GLCALL(glGetUniformLocation)(simpleProgram.id, "mvNormMat");
+			auto pLocation = GLCALL(glGetUniformLocation)(simpleProgram.id, "pMat");
 				
 				auto mvMat = view * model;
 				auto mvNormMat = glm::transpose(glm::inverse(glm::mat3(mvMat)));
@@ -413,7 +456,7 @@ int main(int argc, char** argv)
 				GLCALL(glUniformMatrix3fv)(mvNormLocation, 1, GL_FALSE, glm::value_ptr(mvNormMat));
 				GLCALL(glUniformMatrix4fv)(pLocation, 1, GL_FALSE, glm::value_ptr(pMat));
 			
-				auto lightDirLocation = GLCALL(glGetUniformLocation)(baseProgram, "lightDir");
+				auto lightDirLocation = GLCALL(glGetUniformLocation)(simpleProgram.id, "lightDir");
 				if (lightDirLocation != -1)
 				{
 					auto lightDir = glm::normalize(glm::vec3(-1.0f, -1.0f, -1.0f));
@@ -424,17 +467,15 @@ int main(int argc, char** argv)
 				GLCALL(glBindBuffer)(GL_ARRAY_BUFFER, vbo);
 				GLCALL(glBindBuffer)(GL_ELEMENT_ARRAY_BUFFER, ibo);
 			
-				auto numArrays = 3;
+				auto numArrays = 2;
 			
 				for (int i = 0; i < numArrays; i++)
 					GLCALL(glEnableVertexAttribArray)(i);
 					
 				// pozice
 				GLCALL(glVertexAttribPointer)(0u, 3, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, _x)));
-				// texcoord
-				GLCALL(glVertexAttribPointer)(1u, 2, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, _u))); 
 				// normala
-				GLCALL(glVertexAttribPointer)(2u, 3, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, _nx)));
+				GLCALL(glVertexAttribPointer)(1u, 3, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, _nx)));
 				
 				for (auto modelInfo : scene) {
 					GLCALL(glDrawElements)(GL_TRIANGLES, (GLsizei) modelInfo.indexCount, GL_UNSIGNED_INT, reinterpret_cast<void*>(modelInfo.baseIndex * sizeof(GLuint)));
@@ -443,8 +484,8 @@ int main(int argc, char** argv)
 				for (int i = 0; i < numArrays; i++)
 					GLCALL(glDisableVertexAttribArray)(i);
 					
-				GLCALL(glUseProgram)(0);
-			}
+				GLCALL(glUseProgram)(0);*/
+			
 		
 			SDL_GL_SwapWindow(window);
 		}
