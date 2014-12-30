@@ -1,7 +1,7 @@
-﻿#version 430
+#version 430
 
 uniform vec3 lightDir;
-//layout(binding=0) uniform isampler2D stencilTexture;  
+layout(binding=0) uniform isampler2D stencilTexture;  
 
 
 
