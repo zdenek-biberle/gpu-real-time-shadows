@@ -174,7 +174,7 @@ int main(int argc, char** argv)
 			tmp.resize(200000, 1);		//3 barvy nefunguji? a to zas proc?
 			tmp.resize(400000, 0);
 			tmp.resize(windowWidth * windowHeight, -1);	//jen tahle posledne nastavena
-			glTexImage2D(GL_TEXTURE_2D, 0, GL_R16I, windowWidth, windowHeight, 0, GL_RED_INTEGER, GL_SHORT, tmp.data());
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_R32I, windowWidth, windowHeight, 0, GL_RED_INTEGER, GL_INT, tmp.data());
 		}
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -540,7 +540,7 @@ int main(int argc, char** argv)
 
 			*/
 				
-				/*
+				
 			///////////////////////////////////////////////////////////////////////////////////////////////////////
 			//no need to disable drawing to color or depth buffer here
 			stencilProgram.useProgram();
@@ -550,7 +550,11 @@ int main(int argc, char** argv)
 			glBindBuffer(GL_ARRAY_BUFFER, shadowVolumeBuffer); //bind output of compute shader as array buffer
 			
 			glActiveTexture(GL_TEXTURE0 + 0);
-			glBindTexture(GL_TEXTURE_2D, stencilTextureID);
+			//glBindTexture(GL_TEXTURE_2D, stencilTextureID);
+
+			GLuint imageLoc = glGetUniformLocation(stencilProgram.id, "stencilTexture");
+			glUniform1i(imageLoc, 0); 
+			glBindImageTexture(GL_TEXTURE0, stencilTextureID, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32I);
 
 				mvLocation = glGetUniformLocation(simpleProgram.id, "mvMat");
 				pLocation = glGetUniformLocation(simpleProgram.id, "pMat");
@@ -570,7 +574,7 @@ int main(int argc, char** argv)
 				// pozice vcetne w -> 4 floaty
 				glVertexAttribPointer(0u, 4, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(ShadowVolumeVertex), reinterpret_cast<void*>(offsetof(ShadowVolumeVertex, x)));
 				// multiplicita
-				glVertexAttribPointer(1u, 1, GL_INT, GL_FALSE, (GLsizei) sizeof(ShadowVolumeVertex), reinterpret_cast<void*>(offsetof(ShadowVolumeVertex, multiplicity)));
+				glVertexAttribIPointer(1u, 1, GL_INT, (GLsizei) sizeof(ShadowVolumeVertex), reinterpret_cast<void*>(offsetof(ShadowVolumeVertex, multiplicity)));
 
 				
 					glDrawElements(GL_TRIANGLES, (GLsizei)shadowVolumeVerticesCount, GL_UNSIGNED_INT, nullptr);
@@ -583,9 +587,10 @@ int main(int argc, char** argv)
 				GLCALL(glUseProgram)(0);
 			}
 
-			glBindTexture(GL_TEXTURE_2D, 0);
+			//glBindTexture(GL_TEXTURE_2D, 0);
 			glBindBuffer(GL_ARRAY_BUFFER, 0);
-			*/
+			glBindImageTexture(GL_TEXTURE0, 0, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32I);
+
 			///////////////////////////////////////////////////////////////////////////////////////////////////////
 			lightingProgram.useProgram();
 
