@@ -92,7 +92,7 @@ bool isInFront(vec3 point, vec3 a, vec3 b, vec3 c)
 	
 	vec3 normal = normalize(cross(ab, ac));
 	vec3 pointvec = normalize(point - a);
-	return dot(normal, pointvec) > 0; // TODO mozna prehodit za <
+	return dot(normal, pointvec) < 0; // TODO mozna prehodit za <
 }
 
 void main()
@@ -121,62 +121,70 @@ void main()
 		
 		uint edgeIndices[] = {aidx[0], aidx[1], aidx[1], aidx[2], aidx[2], aidx[0]};
 		int edgeMultiplicity[] = {0, 0, 0};
+		bool ignoredEdge[] = {false, false, false};
 		
-		for (uint triIdx = 0; triIdx < indexCount; triIdx += 3)
+		for (uint idxIdx = 0; idxIdx < indexCount; idxIdx += 3)
 		{
 			for (uint edgeIdx = 0; edgeIdx < 3; edgeIdx++)
 			{
-				uint thisEdge[2];
-				thisEdge[0] = edgeIndices[edgeIdx * 2];
-				thisEdge[1] = edgeIndices[edgeIdx * 2 + 1];
-				
-				uint bidx[3];
-				bidx[0] = inIndices[triIdx + indexOffset];
-				bidx[1] = inIndices[triIdx + 1 + indexOffset];
-				bidx[2] = inIndices[triIdx + 2 + indexOffset];
-			
-				uint matchingVertices = 0;
-				uint thirdVertIdx = 0;
-				for (uint otherVertIdx = 0; otherVertIdx < 3; otherVertIdx++)
+				if (!ignoredEdge[edgeIdx])
 				{
-					if (thisEdge[0] == bidx[otherVertIdx]
-						|| thisEdge[1] == bidx[otherVertIdx])
-					{
-						matchingVertices++;
-					}
-					else
-					{
-						// nenasli jsme rovnocenny vertex v trojuhelniku,
-						// takze bud tento trojuhelnik nesdili tuto hranu
-						// a nebo sdili a tento vertex je treti nesdileny
-						thirdVertIdx = bidx[otherVertIdx];
-					}
-				}
-				
-				if (matchingVertices == 2)
-				{
-					// kazdou hranu zpracovava trojuhelnik s nejnizsim indexem
-					if (triIdx < triangleId * 3) break;
+					uint thisEdge[2];
+					thisEdge[0] = edgeIndices[edgeIdx * 2];
+					thisEdge[1] = edgeIndices[edgeIdx * 2 + 1];
 					
-					vec3 edge0 = position(inVertices[thisEdge[0]]);
-					vec3 edge1 = position(inVertices[thisEdge[1]]);
-					vec3 thirdVert = position(inVertices[thirdVertIdx]);
+					uint bidx[3];
+					bidx[0] = inIndices[idxIdx + indexOffset];
+					bidx[1] = inIndices[idxIdx + 1 + indexOffset];
+					bidx[2] = inIndices[idxIdx + 2 + indexOffset];
 				
-					edgeMultiplicity[edgeIdx] += isInFront(thirdVert, edge0, edge1, edge1 + lightDir) ? 1 : -1;
+					uint matchingVertices = 0;
+					uint thirdVertIdx = 0;
+					for (uint otherVertIdx = 0; otherVertIdx < 3; otherVertIdx++)
+					{
+						if (thisEdge[0] == bidx[otherVertIdx]
+							|| thisEdge[1] == bidx[otherVertIdx])
+						{
+							matchingVertices++;
+						}
+						else
+						{
+							// nenasli jsme rovnocenny vertex v trojuhelniku,
+							// takze bud tento trojuhelnik nesdili tuto hranu
+							// a nebo sdili a tento vertex je treti nesdileny
+							thirdVertIdx = bidx[otherVertIdx];
+						}
+					}
+					
+					if (matchingVertices == 2)
+					{
+						// kazdou hranu zpracovava trojuhelnik s nejnizsim indexem
+						if (idxIdx < triangleId * 3)
+						{
+							ignoredEdge[edgeIdx] = true;
+							break;
+						}
+						
+						vec3 edge0 = position(inVertices[thisEdge[0]]);
+						vec3 edge1 = position(inVertices[thisEdge[1]]);
+						vec3 thirdVert = position(inVertices[thirdVertIdx]);
+					
+						edgeMultiplicity[edgeIdx] += isInFront(thirdVert, edge0, edge1, edge1 + lightDir) ? 1 : -1;
+					}
 				}
 			}
 		}
 		
 		for (uint edgeIdx = 0; edgeIdx < 3; edgeIdx++)
 		{
-			if (edgeMultiplicity[edgeIdx] != 0)
+			if (!ignoredEdge[edgeIdx] && edgeMultiplicity[edgeIdx] != 0)
 			{
 				vec3 edge0 = position(inVertices[edgeIndices[edgeIdx * 2]]);
 				vec3 edge1 = position(inVertices[edgeIndices[edgeIdx * 2 + 1]]);
 				
-				uint triIdx = reserveTriangles(2);
+				uint triIdx = reserveTriangles(1);
 				emitTriangle(triIdx, edge0, edge1, edge0 + extrusionVec, edgeMultiplicity[edgeIdx], 0);
-				emitTriangle(triIdx + 1, edge1, edge1 + extrusionVec, edge0 + extrusionVec, edgeMultiplicity[edgeIdx], 0);
+				//emitTriangle(triIdx + 1, edge1, edge1 + extrusionVec, edge0 + extrusionVec, edgeMultiplicity[edgeIdx], 0);
 			}
 		}
 	}

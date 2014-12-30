@@ -292,9 +292,7 @@ int main(int argc, char** argv)
 					switch (event.key.keysym.sym)
 					{
 						case SDLK_r: rotate = !rotate; break;
-						
 						case SDLK_F5: loadShaders = true; break;
-								
 					}
 					break;
 				
@@ -329,6 +327,10 @@ int main(int argc, char** argv)
 				glm::mat4(1.0f),
 				modelRoty, glm::vec3(0.0f, 1.0f, 0.0f)
 			);
+			
+			auto mvMat = view * model;
+			auto mvNormMat = glm::transpose(glm::inverse(glm::mat3(mvMat)));
+			auto pMat = projection;
 		
 			// loadneme shadery, pokud je to treba
 			if (loadShaders)
@@ -418,6 +420,15 @@ int main(int argc, char** argv)
 				GLCALL(glBufferData)(GL_SHADER_STORAGE_BUFFER, sizeof(ShadowVolumeComputationInfo), &shadowVolumeInfo, GL_DYNAMIC_READ);
 				GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, 0);
 				
+				auto lightDirLocation = glGetUniformLocation(volumeComputationProgram, "lightDir");
+
+				if (lightDirLocation != -1)
+				{
+					auto lightDir = glm::normalize(glm::vec3(-1.0f, -1.0f, -1.0f));
+					lightDir = glm::mat3(glm::inverse(model)) * lightDir;
+					glUniform3fv(lightDirLocation, 1, glm::value_ptr(lightDir));
+				}
+				
 				GLCALL(glBindBufferRange)(GL_SHADER_STORAGE_BUFFER, 0, vbo, 0, sizeof(Vertex) * vertices.size());
 				GLCALL(glBindBufferRange)(GL_SHADER_STORAGE_BUFFER, 1, ibo, 0, sizeof(GLuint) * indices.size());
 				GLCALL(glBindBufferBase)(GL_SHADER_STORAGE_BUFFER, 2, shadowVolumeBuffer);
@@ -478,9 +489,6 @@ int main(int argc, char** argv)
 
 				auto mvLocation = glGetUniformLocation(simpleProgram.id, "mvMat");
 				auto pLocation = glGetUniformLocation(simpleProgram.id, "pMat");
-
-				auto mvMat = view * model;
-				auto pMat = projection;
 
 				glUniformMatrix4fv(mvLocation, 1, GL_FALSE, glm::value_ptr(mvMat));
 				glUniformMatrix4fv(pLocation, 1, GL_FALSE, glm::value_ptr(pMat));
@@ -586,10 +594,6 @@ int main(int argc, char** argv)
 					auto mvNormLocation = glGetUniformLocation(lightingProgram.id, "mvNormMat");
 					pLocation = glGetUniformLocation(lightingProgram.id, "pMat");
 
-					mvMat = view * model;
-					auto mvNormMat = glm::transpose(glm::inverse(glm::mat3(mvMat)));
-					pMat = projection;
-
 					glUniformMatrix4fv(mvLocation, 1, GL_FALSE, glm::value_ptr(mvMat));
 					glUniformMatrix3fv(mvNormLocation, 1, GL_FALSE, glm::value_ptr(mvNormMat));
 					glUniformMatrix4fv(pLocation, 1, GL_FALSE, glm::value_ptr(pMat));
@@ -637,10 +641,6 @@ int main(int argc, char** argv)
 				auto mvLocation = GLCALL(glGetUniformLocation)(volumeVisualizationProgram, "mvMat");
 				auto mvNormLocation = GLCALL(glGetUniformLocation)(volumeVisualizationProgram, "mvNormMat");
 				auto pLocation = GLCALL(glGetUniformLocation)(volumeVisualizationProgram, "pMat");
-				
-				auto mvMat = view * model;
-				auto mvNormMat = glm::transpose(glm::inverse(glm::mat3(mvMat)));
-				auto pMat = projection;
 				
 				GLCALL(glUniformMatrix4fv)(mvLocation, 1, GL_FALSE, glm::value_ptr(mvMat));
 				GLCALL(glUniformMatrix3fv)(mvNormLocation, 1, GL_FALSE, glm::value_ptr(mvNormMat));
