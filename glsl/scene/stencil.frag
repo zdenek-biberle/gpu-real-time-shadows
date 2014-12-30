@@ -4,19 +4,16 @@
 in VertexOutput
 {
 	vec4 position;
+	int multiplicity;
 
 } IN;
 
-out vec4 outColor;
+out int multiplicity;  //color?
 
 void main()
 {
 
-	vec3 ambient = vec3(0.3);
+	multiplicity = IN.multiplicity;	//by activating blending all should be added
 
-	
-	vec3 light = ambient;    //so i dont have to rewrite drawing right now..
-	
-	outColor.z = 1.0;
-	outColor.rgb = vec3(0.5, 0.5, 1.0) * light;
+	//disable depth test?
 }

@@ -157,10 +157,11 @@ int main(int argc, char** argv)
 
 		glGenTextures(1, &stencilTextureID);
 		glBindTexture(GL_TEXTURE_2D, stencilTextureID);
-		
-		std::vector<GLfloat> tmp;
-		tmp.resize(windowWidth * windowHeight, 0.0f);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32 /*GL_R32F*/, windowWidth, windowHeight, 0, GL_DEPTH_COMPONENT, GL_FLOAT, tmp.data());
+		{
+			std::vector<GLshort> tmp;
+			tmp.resize(windowWidth * windowHeight, -1);
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_R16I, windowWidth, windowHeight, 0, GL_RED_INTEGER, GL_SHORT, tmp.data());
+		}
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -174,11 +175,11 @@ int main(int argc, char** argv)
 
 
 		// Set "renderedTexture" as our colour attachement #0
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, stencilTextureID, 0);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, stencilTextureID, 0);
 
 		// Set the list of draw buffers.
-		//GLenum DrawBuffers[1] = { GL_COLOR_ATTACHMENT0 };
-		//glDrawBuffers(1, DrawBuffers); // "1" is the size of DrawBuffers
+		GLenum DrawBuffers[1] = { GL_COLOR_ATTACHMENT0 };
+		glDrawBuffers(1, DrawBuffers); // "1" is the size of DrawBuffers
 
 		// Always check that our framebuffer is ok
 		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE){
@@ -471,7 +472,7 @@ int main(int argc, char** argv)
 				glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 */
-				
+
 			lightingProgram.useProgram();
 
 			glClear(GL_DEPTH_BUFFER_BIT); 
@@ -481,7 +482,9 @@ int main(int argc, char** argv)
 
 				glActiveTexture(GL_TEXTURE0 + 0);
 				glBindTexture(GL_TEXTURE_2D, stencilTextureID);
-
+				std::vector<GLshort> tmp2;
+				tmp2.resize(2500, 0);
+				glTexSubImage2D(GL_TEXTURE_2D, 0, 300, 400, 50, 50, GL_RED_INTEGER, GL_SHORT, tmp2.data());
 				
 
 					//draw scene with lighting
