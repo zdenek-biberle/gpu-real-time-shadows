@@ -225,7 +225,7 @@ int main(int argc, char** argv)
 	float modelRoty = 0.0f;
 	float roty = 0.0f;
 	float rotx = 1.0f;
-	float dist = -3.0f;
+	float dist = -4.0f;
 	
 	bool rotate = true;
 	bool loadShaders = true;
@@ -414,8 +414,10 @@ int main(int argc, char** argv)
 
 
 			
-
+			
 			simpleProgram.useProgram();
+		
+			//glDepthMask(GL_TRUE);
 
 				auto mvLocation = GLCALL(glGetUniformLocation)(simpleProgram.id, "mvMat");
 				auto pLocation = GLCALL(glGetUniformLocation)(simpleProgram.id, "pMat");
@@ -431,7 +433,7 @@ int main(int argc, char** argv)
 
 				auto numArrays = 1;
 
-				for (int i = 0; i < numArrays; i++)
+				for (int i = 0; i < numArrays; i++)			//use vao.. this is silly
 					GLCALL(glEnableVertexAttribArray)(i);
 
 				// pozice
@@ -443,7 +445,7 @@ int main(int argc, char** argv)
 
 				for (int i = 0; i < numArrays; i++)
 					GLCALL(glDisableVertexAttribArray)(i);
-
+				
 			
 
 
@@ -456,6 +458,7 @@ int main(int argc, char** argv)
 
 			*/
 			
+		/*		//no need to disable drawing to color or depth buffer here
 			stencilProgram.useProgram();
 
 			
@@ -467,24 +470,69 @@ int main(int argc, char** argv)
 
 				glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-
+*/
+				
 			lightingProgram.useProgram();
-			glEnable(GL_BLEND);
-			glBlendFunc(GL_ONE, GL_ONE);  //should be straight adding
+
+			glClear(GL_DEPTH_BUFFER_BIT); 
+			//glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+			//glEnable(GL_CULL_FACE);
+			//glCullFace(GL_BACK);
 
 				glActiveTexture(GL_TEXTURE0 + 0);
 				glBindTexture(GL_TEXTURE_2D, stencilTextureID);
 
 				
 
-				//draw scene with lighting
+					//draw scene with lighting
 
+					//reuse previously declared variables
+					mvLocation = glGetUniformLocation(lightingProgram.id, "mvMat");
+					auto mvNormLocation = glGetUniformLocation(lightingProgram.id, "mvNormMat");
+					pLocation = glGetUniformLocation(lightingProgram.id, "pMat");
+
+					mvMat = view * model;
+					auto mvNormMat = glm::transpose(glm::inverse(glm::mat3(mvMat)));
+					pMat = projection;
+
+					glUniformMatrix4fv(mvLocation, 1, GL_FALSE, glm::value_ptr(mvMat));
+					glUniformMatrix3fv(mvNormLocation, 1, GL_FALSE, glm::value_ptr(mvNormMat));
+					glUniformMatrix4fv(pLocation, 1, GL_FALSE, glm::value_ptr(pMat));
+
+					auto lightDirLocation = glGetUniformLocation(lightingProgram.id, "lightDir");
+
+					if (lightDirLocation != -1)
+					{
+						auto lightDir = glm::normalize(glm::vec3(-1.0f, -1.0f, -1.0f));
+						lightDir = glm::mat3(view) * lightDir;
+						glUniform3fv(lightDirLocation, 1, glm::value_ptr(lightDir));
+					}
+
+					glBindBuffer(GL_ARRAY_BUFFER, vbo);
+					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+
+					numArrays = 2;
+
+					for (int i = 0; i < numArrays; i++)
+						glEnableVertexAttribArray(i);
+
+					// pozice
+					glVertexAttribPointer(0u, 3, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, _x)));
+					// normala
+					glVertexAttribPointer(1u, 3, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, _nx)));
+
+					for (auto modelInfo : scene) {
+						glDrawElements(GL_TRIANGLES, (GLsizei)modelInfo.indexCount, GL_UNSIGNED_INT, reinterpret_cast<void*>(modelInfo.baseIndex * sizeof(GLuint)));
+					}
+
+					for (int i = 0; i < numArrays; i++)
+						glDisableVertexAttribArray(i);
 
 			
 				glBindTexture(GL_TEXTURE_2D, 0);
 
-			glDisable(GL_BLEND);
-			GLCALL(glUseProgram)(0);
+			
+			glUseProgram(0);
 			
 
 
