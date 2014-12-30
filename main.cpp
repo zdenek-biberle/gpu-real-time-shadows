@@ -108,7 +108,7 @@ int main(int argc, char** argv)
 	std::vector<GLuint> simplifiedIndices;
 	auto simplifiedModel = simplifyModel(shadowModel, vertices, indices, simplifiedVertices, simplifiedIndices);
 
-	std::vector<decltype(environmentModel)> scene = { environmentModel/*, shadowModel*/ };
+	std::vector<decltype(environmentModel)> scene = { environmentModel, shadowModel };
 
 	std::cout << "Vytváříme buffery" << std::endl;
 
@@ -560,7 +560,6 @@ int main(int argc, char** argv)
 				// multiplicita
 				glVertexAttribIPointer(1u, 1, GL_INT, (GLsizei) sizeof(ShadowVolumeVertex), reinterpret_cast<void*>(offsetof(ShadowVolumeVertex, multiplicity)));
 
-				
 				glDrawArrays(GL_TRIANGLES, 0, shadowVolumeInfo.triCount * 3);
 
 
@@ -577,9 +576,9 @@ int main(int argc, char** argv)
 			///////////////////////////////////////////////////////////////////////////////////////////////////////
 			lightingProgram.useProgram();
 
-			glClear(GL_DEPTH_BUFFER_BIT); 
-
+			glDepthFunc(GL_LESS);
 			glDepthMask(GL_TRUE);
+			glClear(GL_DEPTH_BUFFER_BIT); 
 			glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
 			//glEnable(GL_CULL_FACE);
@@ -641,6 +640,8 @@ int main(int argc, char** argv)
 	
 			if (volumeVisualizationProgram != 0)
 			{
+				GLCALL(glEnable)(GL_BLEND);
+				GLCALL(glBlendFunc)(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 				GLCALL(glUseProgram)(volumeVisualizationProgram);
 			
 				auto mvLocation = GLCALL(glGetUniformLocation)(volumeVisualizationProgram, "mvMat");
@@ -670,6 +671,7 @@ int main(int argc, char** argv)
 					
 				GLCALL(glBindBuffer)(GL_ARRAY_BUFFER, 0);
 				GLCALL(glUseProgram)(0);
+				GLCALL(glDisable)(GL_BLEND);
 			}
 		
 			SDL_GL_SwapWindow(window);
