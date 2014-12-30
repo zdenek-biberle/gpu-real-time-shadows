@@ -170,7 +170,7 @@ int main(int argc, char** argv)
 		glGenTextures(1, &stencilTextureID);
 		glBindTexture(GL_TEXTURE_2D, stencilTextureID);
 		{
-			std::vector<GLshort> tmp;
+			std::vector<GLint> tmp;
 			tmp.resize(200000, 1);		//3 barvy nefunguji? a to zas proc?
 			tmp.resize(400000, 0);
 			tmp.resize(windowWidth * windowHeight, -1);	//jen tahle posledne nastavena
@@ -499,6 +499,19 @@ int main(int argc, char** argv)
 
 
 
+
+			
+			//this bit should clear stencil texture between runs
+			GLint clearColor[] = { 0 };
+			glBindTexture(GL_TEXTURE_2D, stencilTextureID);
+			glClearTexImage(stencilTextureID, 0, GL_RED_INTEGER, GL_INT, nullptr);	//
+			glBindTexture(GL_TEXTURE_2D, 0);
+			
+			/*
+			std::vector<GLubyte> emptyData(windowWidth * windowHeight * 4, 0);
+			glBindTexture(GL_TEXTURE_2D, stencilTextureID);
+			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, windowWidth, windowHeight, GL_RED_INTEGER, GL_INT, &emptyData[0]);
+			*/
 			///////////////////////////////////////////////////////////////////////////////////////////////////////
 			simpleProgram.useProgram();
 		
@@ -530,15 +543,6 @@ int main(int argc, char** argv)
 				
 			
 
-
-			/*  //only for non buffer textures
-			//this bit should clear stencil texture between runs
-			GLfloat clearColor = 0.0f;
-			glBindTexture(GL_TEXTURE_2D, stencilTextureID);
-			glClearTexImage(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, GL_FLOAT, &clearColor);
-			glBindTexture(GL_TEXTURE_2D, 0);
-
-			*/
 				
 				
 			///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -549,12 +553,12 @@ int main(int argc, char** argv)
 
 			glBindBuffer(GL_ARRAY_BUFFER, shadowVolumeBuffer); //bind output of compute shader as array buffer
 			
-			glActiveTexture(GL_TEXTURE0 + 0);
+			//glActiveTexture(GL_TEXTURE0 + 0);
 			//glBindTexture(GL_TEXTURE_2D, stencilTextureID);
 
 			GLuint imageLoc = glGetUniformLocation(stencilProgram.id, "stencilTexture");
 			glUniform1i(imageLoc, 0); 
-			GLCALL(glBindImageTexture)(imageLoc, stencilTextureID, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32I);
+			glBindImageTexture(0, stencilTextureID, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32I);
 
 				mvLocation = glGetUniformLocation(simpleProgram.id, "mvMat");
 				pLocation = glGetUniformLocation(simpleProgram.id, "pMat");
@@ -577,8 +581,8 @@ int main(int argc, char** argv)
 				glVertexAttribIPointer(1u, 1, GL_INT, (GLsizei) sizeof(ShadowVolumeVertex), reinterpret_cast<void*>(offsetof(ShadowVolumeVertex, multiplicity)));
 
 				
-					glDrawElements(GL_TRIANGLES, (GLsizei)shadowVolumeVerticesCount, GL_UNSIGNED_INT, nullptr);
-				
+				glDrawArrays(GL_TRIANGLES, 0, shadowVolumeInfo.triCount * 3);
+
 
 				for (int i = 0; i < numArrays; i++)
 					GLCALL(glDisableVertexAttribArray)(i);
