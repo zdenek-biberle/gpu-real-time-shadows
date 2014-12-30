@@ -9,7 +9,7 @@ layout(location = 1) in int multiplicity;
 
 out VertexOutput
 {
-	int multiplicity;
+	flat int multiplicity;
 
 } OUT;
 

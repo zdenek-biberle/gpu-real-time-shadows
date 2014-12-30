@@ -33,6 +33,7 @@
 #include "modelLoader.h"
 #include "shaderLoader.h"
 #include "Shader.h"
+#include "simplifyModel.h"
 
 struct ShadowVolumeComputationInfo
 {
@@ -101,7 +102,13 @@ int main(int argc, char** argv)
 	auto environmentModel = loadModel(environmentModelFilename, vertices, indices);
 	auto shadowModel = loadModel(shadowModelFilename, vertices, indices);
 
-	std::vector<decltype(environmentModel)> scene = { environmentModel, shadowModel };
+	std::cout << "Zjednodušujeme stínící model" << std::endl;
+	
+	std::vector<SimpleVertex> simplifiedVertices;
+	std::vector<GLuint> simplifiedIndices;
+	auto simplifiedModel = simplifyModel(shadowModel, vertices, indices, simplifiedVertices, simplifiedIndices);
+
+	std::vector<decltype(environmentModel)> scene = { environmentModel/*, shadowModel*/ };
 
 	std::cout << "Vytváříme buffery" << std::endl;
 
@@ -163,7 +170,7 @@ int main(int argc, char** argv)
 		glGenTextures(1, &stencilTextureID);
 		glBindTexture(GL_TEXTURE_2D, stencilTextureID);
 		{
-			std::vector<GLint> tmp;
+			std::vector<GLshort> tmp;
 			tmp.resize(200000, 1);		//3 barvy nefunguji? a to zas proc?
 			tmp.resize(400000, 0);
 			tmp.resize(windowWidth * windowHeight, -1);	//jen tahle posledne nastavena
@@ -198,10 +205,7 @@ int main(int argc, char** argv)
 		*/
 
 		glBindTexture(GL_TEXTURE_2D, 0);
-
-
-	
-
+		
 	GLuint vbo;
 	GLuint ibo;
 	GLuint shadowVolumeBuffer;
@@ -227,6 +231,19 @@ int main(int argc, char** argv)
 		GLCALL(glBindBuffer)(GL_ARRAY_BUFFER, 0);
 		GLCALL(glBindBuffer)(GL_ELEMENT_ARRAY_BUFFER, 0);
 		GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, 0);
+
+	std::cout << "Generujeme pomocné buffery pro výpočet shadow volume" << std::endl;
+	
+	GLuint simpleVbo;
+	GLuint simpleIbo;
+	
+	GLCALL(glGenBuffers)(1, &simpleVbo);
+	GLCALL(glBindBuffer)(GL_ARRAY_BUFFER, simpleVbo);
+	GLCALL(glBufferData)(GL_ARRAY_BUFFER, simplifiedVertices.size() * sizeof(SimpleVertex), simplifiedVertices.data(), GL_STATIC_DRAW);
+	
+	GLCALL(glGenBuffers)(1, &simpleIbo);
+	GLCALL(glBindBuffer)(GL_ELEMENT_ARRAY_BUFFER, simpleIbo);
+	GLCALL(glBufferData)(GL_ELEMENT_ARRAY_BUFFER, simplifiedIndices.size() * sizeof(GLuint), simplifiedIndices.data(), GL_STATIC_DRAW);
 
 	std::cout << "Vstupujeme do hlavní smyčky" << std::endl;
 	
@@ -429,16 +446,16 @@ int main(int argc, char** argv)
 					glUniform3fv(lightDirLocation, 1, glm::value_ptr(lightDir));
 				}
 				
-				GLCALL(glBindBufferRange)(GL_SHADER_STORAGE_BUFFER, 0, vbo, 0, sizeof(Vertex) * vertices.size());
-				GLCALL(glBindBufferRange)(GL_SHADER_STORAGE_BUFFER, 1, ibo, 0, sizeof(GLuint) * indices.size());
+				GLCALL(glBindBufferBase)(GL_SHADER_STORAGE_BUFFER, 0, simpleVbo);
+				GLCALL(glBindBufferBase)(GL_SHADER_STORAGE_BUFFER, 1, simpleIbo);
 				GLCALL(glBindBufferBase)(GL_SHADER_STORAGE_BUFFER, 2, shadowVolumeBuffer);
 				GLCALL(glBindBufferBase)(GL_SHADER_STORAGE_BUFFER, 3, shadowVolumeComputationInfo);
 				
 				auto indexOffsetLocation = GLCALL(glGetUniformLocation)(volumeComputationProgram, "indexOffset");
-				GLCALL(glUniform1ui)(indexOffsetLocation, shadowModel.baseIndex);
+				GLCALL(glUniform1ui)(indexOffsetLocation, simplifiedModel.baseIndex);
 				
 				auto indexCountLocation = GLCALL(glGetUniformLocation)(volumeComputationProgram, "indexCount");
-				GLCALL(glUniform1ui)(indexCountLocation, shadowModel.indexCount);
+				GLCALL(glUniform1ui)(indexCountLocation, simplifiedModel.indexCount);
 				
 				GLCALL(glDispatchCompute)((shadowModel.indexCount + 127) / 128, 1, 1);
 				
@@ -511,8 +528,7 @@ int main(int argc, char** argv)
 				for (int i = 0; i < numArrays; i++)
 					glDisableVertexAttribArray(i);
 				
-				glBindBuffer(GL_ARRAY_BUFFER, 0);
-				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+			
 
 
 			/*  //only for non buffer textures
@@ -535,15 +551,10 @@ int main(int argc, char** argv)
 			
 			glActiveTexture(GL_TEXTURE0 + 0);
 			//glBindTexture(GL_TEXTURE_2D, stencilTextureID);
-			
+
 			GLuint imageLoc = glGetUniformLocation(stencilProgram.id, "stencilTexture");
 			glUniform1i(imageLoc, 0); 
-			glBindImageTexture(0, stencilTextureID, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32I);
-			
-			
-			//GL_INVALID_VALUE is generated if texture is not the name of an existing texture object.
-			//GL_INVALID_VALUE is generated if level or layer is less than zero.
-
+			GLCALL(glBindImageTexture)(imageLoc, stencilTextureID, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32I);
 
 				mvLocation = glGetUniformLocation(simpleProgram.id, "mvMat");
 				pLocation = glGetUniformLocation(simpleProgram.id, "pMat");
@@ -566,7 +577,7 @@ int main(int argc, char** argv)
 				glVertexAttribIPointer(1u, 1, GL_INT, (GLsizei) sizeof(ShadowVolumeVertex), reinterpret_cast<void*>(offsetof(ShadowVolumeVertex, multiplicity)));
 
 				
-				glDrawArrays(GL_TRIANGLES, 0, (GLsizei)shadowVolumeInfo.triCount * 3);
+					glDrawElements(GL_TRIANGLES, (GLsizei)shadowVolumeVerticesCount, GL_UNSIGNED_INT, nullptr);
 				
 
 				for (int i = 0; i < numArrays; i++)
@@ -574,7 +585,6 @@ int main(int argc, char** argv)
 					
 
 				GLCALL(glUseProgram)(0);
-			
 
 			//glBindTexture(GL_TEXTURE_2D, 0);
 			glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -640,11 +650,11 @@ int main(int argc, char** argv)
 
 			
 				glBindTexture(GL_TEXTURE_2D, 0);
-				glBindBuffer(GL_ARRAY_BUFFER, 0);
-				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-				glUseProgram(0);
 
-			///////////////////////////////////////////////////////////////////////////////////////////////////////
+			GLCALL(glBindBuffer)(GL_ARRAY_BUFFER, 0);
+			GLCALL(glBindBuffer)(GL_ELEMENT_ARRAY_BUFFER, 0);	
+			GLCALL(glUseProgram)(0);
+
 			if (volumeVisualizationProgram != 0)
 			{
 				GLCALL(glUseProgram)(volumeVisualizationProgram);
