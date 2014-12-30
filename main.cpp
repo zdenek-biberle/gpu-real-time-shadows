@@ -163,7 +163,7 @@ int main(int argc, char** argv)
 		glGenTextures(1, &stencilTextureID);
 		glBindTexture(GL_TEXTURE_2D, stencilTextureID);
 		{
-			std::vector<GLshort> tmp;
+			std::vector<GLint> tmp;
 			tmp.resize(200000, 1);		//3 barvy nefunguji? a to zas proc?
 			tmp.resize(400000, 0);
 			tmp.resize(windowWidth * windowHeight, -1);	//jen tahle posledne nastavena
@@ -511,7 +511,8 @@ int main(int argc, char** argv)
 				for (int i = 0; i < numArrays; i++)
 					glDisableVertexAttribArray(i);
 				
-			
+				glBindBuffer(GL_ARRAY_BUFFER, 0);
+				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
 
 			/*  //only for non buffer textures
@@ -534,10 +535,15 @@ int main(int argc, char** argv)
 			
 			glActiveTexture(GL_TEXTURE0 + 0);
 			//glBindTexture(GL_TEXTURE_2D, stencilTextureID);
-
+			
 			GLuint imageLoc = glGetUniformLocation(stencilProgram.id, "stencilTexture");
 			glUniform1i(imageLoc, 0); 
-			glBindImageTexture(GL_TEXTURE0, stencilTextureID, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32I);
+			glBindImageTexture(0, stencilTextureID, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32I);
+			
+			
+			//GL_INVALID_VALUE is generated if texture is not the name of an existing texture object.
+			//GL_INVALID_VALUE is generated if level or layer is less than zero.
+
 
 				mvLocation = glGetUniformLocation(simpleProgram.id, "mvMat");
 				pLocation = glGetUniformLocation(simpleProgram.id, "pMat");
@@ -560,7 +566,7 @@ int main(int argc, char** argv)
 				glVertexAttribIPointer(1u, 1, GL_INT, (GLsizei) sizeof(ShadowVolumeVertex), reinterpret_cast<void*>(offsetof(ShadowVolumeVertex, multiplicity)));
 
 				
-					glDrawElements(GL_TRIANGLES, (GLsizei)shadowVolumeVerticesCount, GL_UNSIGNED_INT, nullptr);
+				glDrawArrays(GL_TRIANGLES, 0, (GLsizei)shadowVolumeInfo.triCount * 3);
 				
 
 				for (int i = 0; i < numArrays; i++)
@@ -568,11 +574,11 @@ int main(int argc, char** argv)
 					
 
 				GLCALL(glUseProgram)(0);
-			}
+			
 
 			//glBindTexture(GL_TEXTURE_2D, 0);
 			glBindBuffer(GL_ARRAY_BUFFER, 0);
-			glBindImageTexture(GL_TEXTURE0, 0, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32I);
+			glBindImageTexture(0, 0, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32I);
 
 			///////////////////////////////////////////////////////////////////////////////////////////////////////
 			lightingProgram.useProgram();
@@ -634,11 +640,11 @@ int main(int argc, char** argv)
 
 			
 				glBindTexture(GL_TEXTURE_2D, 0);
+				glBindBuffer(GL_ARRAY_BUFFER, 0);
+				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+				glUseProgram(0);
 
-			GLCALL(glBindBuffer)(GL_ARRAY_BUFFER, 0);
-			GLCALL(glBindBuffer)(GL_ELEMENT_ARRAY_BUFFER, 0);	
-			glUseProgram(0);
-
+			///////////////////////////////////////////////////////////////////////////////////////////////////////
 			if (volumeVisualizationProgram != 0)
 			{
 				GLCALL(glUseProgram)(volumeVisualizationProgram);
