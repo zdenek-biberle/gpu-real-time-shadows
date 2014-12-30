@@ -12,11 +12,7 @@ struct InVertex
 	float x;
 	float y;
 	float z;
-	float nx;
-	float ny;
-	float nz;
-	float u;
-	float v;
+	int padding;
 };
 
 struct OutVertex
@@ -26,6 +22,11 @@ struct OutVertex
 	uint isCap;
 	uint padding0;
 	uint padding1;
+};
+
+struct SimpleVertex
+{
+	vec4 position;
 };
 
 layout (std430, binding = 0) readonly buffer InVertices
@@ -48,6 +49,16 @@ layout (std430, binding = 3) writeonly buffer OutInfo
 	uint outTriCount;
 };
 
+layout (std430, binding = 4) buffer VertexSortBuffer
+{
+	SimpleVertex sortBuffer[];
+};
+
+layout (std430, binding = 5) buffer IdxRemapBuffer
+{
+	uint idxRemapBuffer[];
+};
+
 vec3 position(InVertex vert)
 {
 	return vec3(vert.x, vert.y, vert.z);
@@ -55,7 +66,7 @@ vec3 position(InVertex vert)
 
 bool isFrontFacing(vec3 a, vec3 b, vec3 c)
 {
-	vec3 ab = b - a;
+	vec3 ab = a - b;
 	vec3 ac = c - a;
 	vec3 n = cross(ab, ac);
 	return dot(normalize(n), normalize(lightDir)) > 0;
@@ -92,7 +103,7 @@ bool isInFront(vec3 point, vec3 a, vec3 b, vec3 c)
 	
 	vec3 normal = normalize(cross(ab, ac));
 	vec3 pointvec = normalize(point - a);
-	return dot(normal, pointvec) < 0; // TODO mozna prehodit za <
+	return dot(pointvec, normal) == 0.0;
 }
 
 void main()
@@ -182,9 +193,9 @@ void main()
 				vec3 edge0 = position(inVertices[edgeIndices[edgeIdx * 2]]);
 				vec3 edge1 = position(inVertices[edgeIndices[edgeIdx * 2 + 1]]);
 				
-				uint triIdx = reserveTriangles(1);
+				uint triIdx = reserveTriangles(2);
 				emitTriangle(triIdx, edge0, edge1, edge0 + extrusionVec, edgeMultiplicity[edgeIdx], 0);
-				//emitTriangle(triIdx + 1, edge1, edge1 + extrusionVec, edge0 + extrusionVec, edgeMultiplicity[edgeIdx], 0);
+				emitTriangle(triIdx + 1, edge1, edge1 + extrusionVec, edge0 + extrusionVec, edgeMultiplicity[edgeIdx], 0);
 			}
 		}
 	}

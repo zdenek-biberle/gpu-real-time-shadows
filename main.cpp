@@ -33,6 +33,7 @@
 #include "modelLoader.h"
 #include "shaderLoader.h"
 #include "Shader.h"
+#include "simplifyModel.h"
 
 struct ShadowVolumeComputationInfo
 {
@@ -101,7 +102,13 @@ int main(int argc, char** argv)
 	auto environmentModel = loadModel(environmentModelFilename, vertices, indices);
 	auto shadowModel = loadModel(shadowModelFilename, vertices, indices);
 
-	std::vector<decltype(environmentModel)> scene = { environmentModel, shadowModel };
+	std::cout << "Zjednodušujeme stínící model" << std::endl;
+	
+	std::vector<SimpleVertex> simplifiedVertices;
+	std::vector<GLuint> simplifiedIndices;
+	auto simplifiedModel = simplifyModel(shadowModel, vertices, indices, simplifiedVertices, simplifiedIndices);
+
+	std::vector<decltype(environmentModel)> scene = { environmentModel/*, shadowModel*/ };
 
 	std::cout << "Vytváříme buffery" << std::endl;
 
@@ -198,10 +205,7 @@ int main(int argc, char** argv)
 		*/
 
 		glBindTexture(GL_TEXTURE_2D, 0);
-
-
-	
-
+		
 	GLuint vbo;
 	GLuint ibo;
 	GLuint shadowVolumeBuffer;
@@ -227,6 +231,19 @@ int main(int argc, char** argv)
 		GLCALL(glBindBuffer)(GL_ARRAY_BUFFER, 0);
 		GLCALL(glBindBuffer)(GL_ELEMENT_ARRAY_BUFFER, 0);
 		GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, 0);
+
+	std::cout << "Generujeme pomocné buffery pro výpočet shadow volume" << std::endl;
+	
+	GLuint simpleVbo;
+	GLuint simpleIbo;
+	
+	GLCALL(glGenBuffers)(1, &simpleVbo);
+	GLCALL(glBindBuffer)(GL_ARRAY_BUFFER, simpleVbo);
+	GLCALL(glBufferData)(GL_ARRAY_BUFFER, simplifiedVertices.size() * sizeof(SimpleVertex), simplifiedVertices.data(), GL_STATIC_DRAW);
+	
+	GLCALL(glGenBuffers)(1, &simpleIbo);
+	GLCALL(glBindBuffer)(GL_ELEMENT_ARRAY_BUFFER, simpleIbo);
+	GLCALL(glBufferData)(GL_ELEMENT_ARRAY_BUFFER, simplifiedIndices.size() * sizeof(GLuint), simplifiedIndices.data(), GL_STATIC_DRAW);
 
 	std::cout << "Vstupujeme do hlavní smyčky" << std::endl;
 	
@@ -429,16 +446,16 @@ int main(int argc, char** argv)
 					glUniform3fv(lightDirLocation, 1, glm::value_ptr(lightDir));
 				}
 				
-				GLCALL(glBindBufferRange)(GL_SHADER_STORAGE_BUFFER, 0, vbo, 0, sizeof(Vertex) * vertices.size());
-				GLCALL(glBindBufferRange)(GL_SHADER_STORAGE_BUFFER, 1, ibo, 0, sizeof(GLuint) * indices.size());
+				GLCALL(glBindBufferBase)(GL_SHADER_STORAGE_BUFFER, 0, simpleVbo);
+				GLCALL(glBindBufferBase)(GL_SHADER_STORAGE_BUFFER, 1, simpleIbo);
 				GLCALL(glBindBufferBase)(GL_SHADER_STORAGE_BUFFER, 2, shadowVolumeBuffer);
 				GLCALL(glBindBufferBase)(GL_SHADER_STORAGE_BUFFER, 3, shadowVolumeComputationInfo);
 				
 				auto indexOffsetLocation = GLCALL(glGetUniformLocation)(volumeComputationProgram, "indexOffset");
-				GLCALL(glUniform1ui)(indexOffsetLocation, shadowModel.baseIndex);
+				GLCALL(glUniform1ui)(indexOffsetLocation, simplifiedModel.baseIndex);
 				
 				auto indexCountLocation = GLCALL(glGetUniformLocation)(volumeComputationProgram, "indexCount");
-				GLCALL(glUniform1ui)(indexCountLocation, shadowModel.indexCount);
+				GLCALL(glUniform1ui)(indexCountLocation, simplifiedModel.indexCount);
 				
 				GLCALL(glDispatchCompute)((shadowModel.indexCount + 127) / 128, 1, 1);
 				

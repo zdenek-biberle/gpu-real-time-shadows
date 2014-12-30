@@ -42,6 +42,20 @@ struct Vertex
 
 static_assert(sizeof(Vertex) == sizeof(float) * 8, "Velikost struktury Vertex neni 8 floatu");
 
+struct SimpleVertex
+{
+	SimpleVertex(
+		float x, float y, float z);
+
+	SimpleVertex(
+		glm::vec3 point);
+	
+	float _x;
+	float _y;
+	float _z;
+    int padding;
+};
+
 struct ShadowVolumeVertex
 {
 	float x;
@@ -57,6 +71,11 @@ static_assert(sizeof(ShadowVolumeVertex) == sizeof(float) * 8, "Velikost struktu
 
 // loaduje vertexy, normaly a uvcka
 ModelInfo loadModel(
+	const std::string& filename, 
+	std::vector<Vertex>& vertices, 
+	std::vector<GLuint>& indices);
+	
+	ModelInfo loadModel(
 	const std::string& filename, 
 	std::vector<Vertex>& vertices, 
 	std::vector<GLuint>& indices);
