@@ -3,8 +3,6 @@
 uniform vec3 lightDir;
 layout(binding=0) uniform isampler2D stencilTexture;  
 
-
-
 in VertexOutput
 {
 	vec4 position;

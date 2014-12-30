@@ -259,7 +259,6 @@ int main(int argc, char** argv)
 	auto ticksDelta = 0;
 	
 	ShadowVolumeComputationInfo shadowVolumeInfo;
-	GLuint baseProgram = 0;
 	GLuint volumeComputationProgram = 0;
 	GLuint volumeVisualizationProgram = 0;
 	
@@ -327,6 +326,7 @@ int main(int argc, char** argv)
 		try
 		{	
 			GLCALL(glEnable)(GL_DEPTH_TEST);	
+			GLCALL(glDepthFunc)(GL_LEQUAL);
 			GLCALL(glLineWidth)(0.1f);		//0.0f-1.0f
 			GLCALL(glClear)(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		
@@ -366,25 +366,6 @@ int main(int argc, char** argv)
 				{
 					GLCALL(glDeleteProgram)(volumeVisualizationProgram);
 					volumeVisualizationProgram = 0;
-				}
-				
-				try
-				{
-					std::vector<std::string> vertexShaders;
-					std::vector<std::string> fragmentShaders;
-					
-					vertexShaders.push_back(readFile("./glsl/scene/vert.glsl"));
-					fragmentShaders.push_back(readFile("./glsl/scene/frag.glsl"));
-					
-					baseProgram = createProgram(
-						vertexShaders, 
-						std::vector<std::string>(), 
-						fragmentShaders, 
-						std::vector<std::string>());
-				}
-				catch (std::exception& ex)
-				{
-					std::cerr << "Chyba kompilace programu pro renderování scény: " << ex.what() << std::endl;
 				}
 				
 				try
@@ -457,7 +438,7 @@ int main(int argc, char** argv)
 				auto indexCountLocation = GLCALL(glGetUniformLocation)(volumeComputationProgram, "indexCount");
 				GLCALL(glUniform1ui)(indexCountLocation, simplifiedModel.indexCount);
 				
-				GLCALL(glDispatchCompute)((shadowModel.indexCount + 127) / 128, 1, 1);
+				GLCALL(glDispatchCompute)((shadowModel.indexCount / 3 + 127) / 128, 1, 1);
 				
 				GLCALL(glUseProgram)(0);
 				GLCALL(glMemoryBarrier)(GL_ALL_BARRIER_BITS);
@@ -471,7 +452,6 @@ int main(int argc, char** argv)
 				shadowVolumeInfo = *reinterpret_cast<ShadowVolumeComputationInfo*>(GLCALL(glMapBuffer)(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY));
 				GLCALL(glUnmapBuffer)(GL_SHADER_STORAGE_BUFFER);
 				GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, 0);
-				//std::cout << shadowVolumeInfo.triCount << std::endl;
 				
 				/*GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, shadowVolumeBuffer);
 				auto verts = reinterpret_cast<ShadowVolumeVertex*>(GLCALL(glMapBuffer)(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY));
@@ -654,7 +634,7 @@ int main(int argc, char** argv)
 			GLCALL(glBindBuffer)(GL_ARRAY_BUFFER, 0);
 			GLCALL(glBindBuffer)(GL_ELEMENT_ARRAY_BUFFER, 0);	
 			GLCALL(glUseProgram)(0);
-
+	
 			if (volumeVisualizationProgram != 0)
 			{
 				GLCALL(glUseProgram)(volumeVisualizationProgram);

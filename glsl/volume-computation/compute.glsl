@@ -66,10 +66,10 @@ vec3 position(InVertex vert)
 
 bool isFrontFacing(vec3 a, vec3 b, vec3 c)
 {
-	vec3 ab = a - b;
+	vec3 ab = b - a;
 	vec3 ac = c - a;
 	vec3 n = cross(ab, ac);
-	return dot(normalize(n), normalize(lightDir)) > 0;
+	return dot(normalize(n), normalize(lightDir)) < 0;
 	//return a.x > 0 && b.x > 0 && c.x > 0;
 }
 
@@ -103,7 +103,7 @@ bool isInFront(vec3 point, vec3 a, vec3 b, vec3 c)
 	
 	vec3 normal = normalize(cross(ab, ac));
 	vec3 pointvec = normalize(point - a);
-	return dot(pointvec, normal) == 0.0;
+	return dot(pointvec, normal) > 0.0;
 }
 
 void main()
