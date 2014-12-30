@@ -40,17 +40,7 @@ struct Vertex
 	float _v;
 };
 
-struct SimpleVertex
-{
-	SimpleVertex(
-		float x, float y, float z);
-	SimpleVertex(
-		glm::vec3 p);
-	float _x;
-	float _y;
-	float _z;
-	float _pad;
-};
+static_assert(sizeof(Vertex) == sizeof(float) * 8, "Velikost struktury Vertex neni 8 floatu");
 
 struct ShadowVolumeVertex
 {
@@ -63,6 +53,8 @@ struct ShadowVolumeVertex
 	int padding[2];
 };
 
+static_assert(sizeof(ShadowVolumeVertex) == sizeof(float) * 8, "Velikost struktury ShadowVolumeVertex neni 8 floatu");
+
 // loaduje vertexy, normaly a uvcka
 ModelInfo loadModel(
 	const std::string& filename, 
@@ -70,11 +62,5 @@ ModelInfo loadModel(
 	std::vector<GLuint>& indices);
 
 void untangle(std::vector<glm::vec3> &vertices, std::vector<glm::vec3> &normals, std::vector<std::vector<std::string>> &faces, std::vector<Vertex>& outVertices, std::vector<GLuint> &indices);
-
-// loaduje jenom vertexy
-ModelInfo loadSimpleModel(
-	const std::string& filename, 
-	std::vector<SimpleVertex>& vertices, 
-	std::vector<GLuint>& indices);
 
 #endif

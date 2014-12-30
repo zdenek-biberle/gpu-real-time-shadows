@@ -1,10 +1,10 @@
-CXXFLAGS += --std=c++11 -DGLM_FORCE_RADIANS
+CXXFLAGS += --std=c++11 -DGLM_FORCE_RADIANS -g3
 LDLIBS += -lGLEW -lGL -lSDL2 -lassimp
 PROGRAM = gpu-real-time-shadows
 
 default: $(PROGRAM)
 
-$(PROGRAM): main.o glUtil.o modelLoader.o readFile.o shaderLoader.o
+$(PROGRAM): main.o glUtil.o modelLoader.o readFile.o shaderLoader.o Shader.o
 	$(CXX) -g $(CXXFLAGS) $^ -o $@ $(LDLIBS)
 
 clean:
