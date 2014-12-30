@@ -14,7 +14,7 @@ out vec4 outColor;
 void main()
 {
 	int number = texture(stencilTexture, gl_FragCoord.xy).r;	//here look into texture with shadowing info.. zeroes should be lighted
-	vec3 ambient = vec3(0.3);
+	vec3 ambient = vec3(0.3f);
 
 	if(number == 0){
 		vec3 normNormal = normalize(IN.normal);

@@ -565,14 +565,16 @@ int main(int argc, char** argv)
 
 
 				for (int i = 0; i < numArrays; i++)
-					GLCALL(glDisableVertexAttribArray)(i);
+					glDisableVertexAttribArray(i);
 					
 
-				GLCALL(glUseProgram)(0);
+				
 
 			//glBindTexture(GL_TEXTURE_2D, 0);
 			glBindBuffer(GL_ARRAY_BUFFER, 0);
 			glBindImageTexture(0, 0, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32I);
+			glUseProgram(0);
+
 
 			///////////////////////////////////////////////////////////////////////////////////////////////////////
 			lightingProgram.useProgram();
@@ -587,10 +589,7 @@ int main(int argc, char** argv)
 
 				glActiveTexture(GL_TEXTURE0 + 0);
 				glBindTexture(GL_TEXTURE_2D, stencilTextureID);
-				//std::vector<GLshort> tmp2;  //nefunguje.. hmm
-				//tmp2.resize(2500, 0);
-				//glTexSubImage2D(GL_TEXTURE_2D, 0, 300, 400, 50, 50, GL_RED_INTEGER, GL_SHORT, tmp2.data());
-				
+			
 
 					//draw scene with lighting
 
