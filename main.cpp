@@ -554,7 +554,7 @@ int main(int argc, char** argv)
 
 			GLuint imageLoc = glGetUniformLocation(stencilProgram.id, "stencilTexture");
 			glUniform1i(imageLoc, 0); 
-			glBindImageTexture(GL_TEXTURE0, stencilTextureID, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32I);
+			GLCALL(glBindImageTexture)(imageLoc, stencilTextureID, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32I);
 
 				mvLocation = glGetUniformLocation(simpleProgram.id, "mvMat");
 				pLocation = glGetUniformLocation(simpleProgram.id, "pMat");
@@ -585,11 +585,10 @@ int main(int argc, char** argv)
 					
 
 				GLCALL(glUseProgram)(0);
-			}
 
 			//glBindTexture(GL_TEXTURE_2D, 0);
 			glBindBuffer(GL_ARRAY_BUFFER, 0);
-			glBindImageTexture(GL_TEXTURE0, 0, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32I);
+			glBindImageTexture(0, 0, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32I);
 
 			///////////////////////////////////////////////////////////////////////////////////////////////////////
 			lightingProgram.useProgram();
@@ -654,7 +653,7 @@ int main(int argc, char** argv)
 
 			GLCALL(glBindBuffer)(GL_ARRAY_BUFFER, 0);
 			GLCALL(glBindBuffer)(GL_ELEMENT_ARRAY_BUFFER, 0);	
-			glUseProgram(0);
+			GLCALL(glUseProgram)(0);
 
 			if (volumeVisualizationProgram != 0)
 			{
