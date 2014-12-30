@@ -1,20 +1,23 @@
 #version 430
 
-
 in VertexOutput
 {
-	vec4 position;
 	int multiplicity;
-
 } IN;
 
-out int multiplicity;  //color?
+layout(r32i) uniform iimage2D stencilTexture;	// r32i to support   int  imageAtomicAdd(IMAGE_INFO, int data);
 
 void main()
 {
 
-	//if(gl_FrontFacing == true){
-	multiplicity = IN.multiplicity;	//by activating blending all should be added
-	//}
-	//disable depth test?
+	int m;
+
+	if(gl_FrontFacing == true){
+		m = IN.multiplicity;
+	} else {
+		m = -IN.multiplicity;
+	}
+
+	int value = imageAtomicAdd(stencilTexture, ivec2(gl_FragCoord.xy), m);
+
 }

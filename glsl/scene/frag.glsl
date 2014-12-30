@@ -1,7 +1,9 @@
-#version 330
+﻿#version 430
 
 uniform vec3 lightDir;
-layout(binding=0) uniform isampler2D stencilTexture;  //
+//layout(binding=0) uniform isampler2D stencilTexture;  
+
+
 
 in VertexOutput
 {
@@ -51,3 +53,5 @@ void main()
 		outColor.xyz = ambient;		
 	}
 }
+
+
