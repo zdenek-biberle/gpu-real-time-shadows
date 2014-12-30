@@ -22,7 +22,7 @@ struct InVertex
 struct OutVertex
 {
 	vec4 position;
-	uint multiplicity;
+	int multiplicity;
 	uint isCap;
 	uint padding0;
 	uint padding1;
@@ -68,7 +68,7 @@ uint reserveTriangles(uint n)
 	return atomicAdd(outTriCount, n);
 }
 
-void emitTriangle(uint idx, vec3 a, vec3 b, vec3 c, uint multiplicity, uint isCap)
+void emitTriangle(uint idx, vec3 a, vec3 b, vec3 c, int multiplicity, uint isCap)
 {
 	idx *= 3;
 	
@@ -120,7 +120,7 @@ void main()
 		}
 		
 		uint edgeIndices[] = {aidx[0], aidx[1], aidx[1], aidx[2], aidx[2], aidx[0]};
-		uint edgeMultiplicity[] = {0, 0, 0};
+		int edgeMultiplicity[] = {0, 0, 0};
 		
 		for (uint triIdx = 0; triIdx < indexCount; triIdx += 3)
 		{

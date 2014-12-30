@@ -32,6 +32,7 @@
 #include "readFile.h"
 #include "modelLoader.h"
 #include "shaderLoader.h"
+#include "Shader.h"
 
 struct ShadowVolumeComputationInfo
 {
@@ -61,15 +62,14 @@ int main(int argc, char** argv)
 		windowWidth, windowHeight,
 		SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL/* | SDL_WINDOW_RESIZABLE*/);  //dont know how to resize framebuffer texture right now..
 
-
-	/*SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);*/
-
-
+	//SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+	//SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+	//SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);	//must be enabled to allow debug output callback
+	//SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
+	
 	auto glCtx = SDL_GL_CreateContext(window);
+	
 	//glewExperimental = GL_TRUE;
 	GLenum err = glewInit();
 	if (GLEW_OK != err)
@@ -105,20 +105,70 @@ int main(int argc, char** argv)
 
 	std::cout << "Vytváříme buffery" << std::endl;
 
+	GLuint shadowVolumeVerticesCount;
 	GLuint stencilFrameBufferID;
 	GLuint stencilTextureID;
 
+	ShaderProgram simpleProgram("simple");
+	ShaderProgram stencilProgram("stencil");
+	ShaderProgram lightingProgram("lighting");
+
+	{
+		Shader Vshader(GL_VERTEX_SHADER, "./glsl/scene/simple.vert");
+		Shader Fshader(GL_FRAGMENT_SHADER, "./glsl/scene/simple.frag");
+	
+		simpleProgram.addShader(&Vshader);
+		simpleProgram.addShader(&Fshader);
+
+		if (!simpleProgram.linkProgram()){
+			std::cin.ignore();
+			exit(1);
+		}
+	}
+
+	{
+		Shader Vshader(GL_VERTEX_SHADER, "./glsl/scene/stencil.vert");
+		Shader Fshader(GL_FRAGMENT_SHADER, "./glsl/scene/stencil.frag");
+
+		stencilProgram.addShader(&Vshader);
+		stencilProgram.addShader(&Fshader);
+
+		if (!stencilProgram.linkProgram()){
+			std::cin.ignore();
+			exit(1);
+		}
+	}
+
+	{
+		Shader Vshader(GL_VERTEX_SHADER, "./glsl/scene/vert.glsl");
+		Shader Fshader(GL_FRAGMENT_SHADER, "./glsl/scene/frag.glsl");
+
+		lightingProgram.addShader(&Vshader);
+		lightingProgram.addShader(&Fshader);
+
+		if (!lightingProgram.linkProgram()){
+			std::cin.ignore();
+			exit(1);
+		}
+	}
+	
+
 	//http://www.opengl-tutorial.org/intermediate-tutorials/tutorial-14-render-to-texture/
-	try{
+
 		// The framebuffer, which regroups 0, 1, or more textures, and 0 or 1 depth buffer.
 
-		glGenFramebuffers(1, &stencilFrameBufferID);
-		glBindFramebuffer(GL_FRAMEBUFFER, stencilFrameBufferID);
+	//	glGenFramebuffers(1, &stencilFrameBufferID);
+	//	glBindFramebuffer(GL_FRAMEBUFFER, stencilFrameBufferID);
 
 		glGenTextures(1, &stencilTextureID);
 		glBindTexture(GL_TEXTURE_2D, stencilTextureID);
-		
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32 /*GL_R32F*/, windowWidth, windowHeight, 0, GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+		{
+			std::vector<GLshort> tmp;
+			tmp.resize(200000, 1);		//3 barvy nefunguji? a to zas proc?
+			tmp.resize(400000, 0);
+			tmp.resize(windowWidth * windowHeight, -1);	//jen tahle posledne nastavena
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_R16I, windowWidth, windowHeight, 0, GL_RED_INTEGER, GL_SHORT, tmp.data());
+		}
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -126,55 +176,29 @@ int main(int argc, char** argv)
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_NONE);
 
+
+		//http://stackoverflow.com/questions/21562103/not-being-able-to-render-into-fbo-with-depth-attachment
+		//so using this is supposedly bad idea.. only possible with color attachment??? is this true?
+
+		/*
 		// Set "renderedTexture" as our colour attachement #0
-		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, stencilTextureID, 0);
+		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, stencilTextureID, 0);
 
 		// Set the list of draw buffers.
-		//GLenum DrawBuffers[1] = { GL_COLOR_ATTACHMENT0 };
-		//glDrawBuffers(1, DrawBuffers); // "1" is the size of DrawBuffers
+		GLenum DrawBuffers[1] = { GL_COLOR_ATTACHMENT0 };
+		glDrawBuffers(1, DrawBuffers); // "1" is the size of DrawBuffers
 
+		
 		// Always check that our framebuffer is ok
 		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE){
 			std::cout << "framebuffer fail\n";
 			std::cin.ignore();
 			return 1;
 		}
-
-
-		/* //put into draw loop
-
-		glBindTexture(GL_TEXTURE_2D, 0);
-		glBindFramebuffer(GL_FRAMEBUFFER, stencilFrameBufferID);
-		//glViewport(0, 0, 1024, 1024);// in case of different resolutions..
-
-	
-		//draw scene -> fill depth buffer, (color buffer with ambient values?, and blend it with rest..) - simple shaders
-		//now somehow use buffer data generated by compute shader as input   ????? - side caps
-		//no culling - front and back is already inside multiplicity parameter
-		//draw it and fill stencilTexture at index xy (gl_FragCoord.xy) with multiplicity of that fragment. (which is also input from CS) 
-			//- it's simple write into layout(location = 0) out float stencil; 
-			//unbind framebuffer to be able to bind texture..
-
-		//use that texture when drawing scene again to decide what is in shade 
-		//done -culling 
-
-		//this bit should clear it between runs
-		GLfloat clearColor = 0.0f;
-		glBindTexture(GL_TEXTURE_2D, stencilTextureID);
-		glClearTexImage(GL_TEXTURE_2D, 0, GL_FLOAT, GL_FLOAT, &clearColor);
-		glBindTexture(GL_TEXTURE_2D, 0);
-
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);
-		//glViewport(0, 0, width, height);
 		*/
 
 		glBindTexture(GL_TEXTURE_2D, 0);
-		glBindFramebuffer(GL_FRAMEBUFFER, 0);	//sets drawing back to screen
-	}
-	catch (std::exception& ex)
-	{
-		std::cerr << ex.what() << std::endl;
-	}
+
 
 	
 
@@ -209,7 +233,7 @@ int main(int argc, char** argv)
 	float modelRoty = 0.0f;
 	float roty = 0.0f;
 	float rotx = 1.0f;
-	float dist = -3.0f;
+	float dist = -4.0f;
 	
 	bool rotate = true;
 	bool loadShaders = true;
@@ -218,7 +242,6 @@ int main(int argc, char** argv)
 	auto ticksDelta = 0;
 	
 	ShadowVolumeComputationInfo shadowVolumeInfo;
-	
 	GLuint baseProgram = 0;
 	GLuint volumeComputationProgram = 0;
 	GLuint volumeVisualizationProgram = 0;
@@ -292,6 +315,7 @@ int main(int argc, char** argv)
 			GLCALL(glLineWidth)(0.1f);		//0.0f-1.0f
 			GLCALL(glClear)(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		
+
 			auto projection = glm::perspective(90.0f, float(windowWidth) / float(windowHeight), 0.1f, 100.0f );
 			auto view = glm::rotate(
 				glm::rotate(
@@ -312,12 +336,7 @@ int main(int argc, char** argv)
 				std::cout << "Nahráváme shadery" << std::endl;
 				loadShaders = false;
 				
-				if (baseProgram != 0)					
-				{
-					GLCALL(glDeleteProgram)(baseProgram);
-					baseProgram = 0;
-				}
-				
+								
 				if (volumeComputationProgram != 0)
 				{
 					GLCALL(glDeleteProgram)(volumeComputationProgram);
@@ -382,7 +401,7 @@ int main(int argc, char** argv)
 				}
 				catch (std::exception& ex)
 				{
-					std::cerr << "Chyba kompilace programu pro generování shadow volume: " << ex.what() << std::endl;
+					std::cerr << "Chyba kompilace programu pro zobrazování shadow volume: " << ex.what() << std::endl;
 				}
 			}
 			
@@ -435,57 +454,182 @@ int main(int argc, char** argv)
 				GLCALL(glUseProgram)(0);
 			}
 			
-			if (baseProgram != 0)
-			{
-				GLCALL(glUseProgram)(baseProgram);
+
+
+
+			//draw scene -> fill depth buffer, (color buffer with ambient values?, and blend it with rest..) - simple shaders
+			//now somehow use buffer data generated by compute shader as input   ????? - side caps
+			//no culling - front and back is already inside multiplicity parameter
+			//draw it and fill stencilTexture at index xy (gl_FragCoord.xy) with multiplicity of that fragment. (which is also input from CS)
 			
-				auto mvLocation = GLCALL(glGetUniformLocation)(baseProgram, "mvMat");
-				auto mvNormLocation = GLCALL(glGetUniformLocation)(baseProgram, "mvNormMat");
-				auto pLocation = GLCALL(glGetUniformLocation)(baseProgram, "pMat");
-				
+			
+
+			//culling
+			//use that texture when drawing scene again to decide what is in shade
+			//use new program, bind texture, draw
+			//done
+
+
+
+			///////////////////////////////////////////////////////////////////////////////////////////////////////
+			simpleProgram.useProgram();
+		
+			//glDepthMask(GL_TRUE);
+
+				auto mvLocation = glGetUniformLocation(simpleProgram.id, "mvMat");
+				auto pLocation = glGetUniformLocation(simpleProgram.id, "pMat");
+
 				auto mvMat = view * model;
-				auto mvNormMat = glm::transpose(glm::inverse(glm::mat3(mvMat)));
 				auto pMat = projection;
-				
-				GLCALL(glUniformMatrix4fv)(mvLocation, 1, GL_FALSE, glm::value_ptr(mvMat));
-				GLCALL(glUniformMatrix3fv)(mvNormLocation, 1, GL_FALSE, glm::value_ptr(mvNormMat));
-				GLCALL(glUniformMatrix4fv)(pLocation, 1, GL_FALSE, glm::value_ptr(pMat));
-			
-				auto lightDirLocation = GLCALL(glGetUniformLocation)(baseProgram, "lightDir");
-				if (lightDirLocation != -1)
-				{
-					auto lightDir = glm::normalize(glm::vec3(-1.0f, -1.0f, -1.0f));
-					lightDir = glm::mat3(view) * lightDir;
-					GLCALL(glUniform3fv)(lightDirLocation, 1, glm::value_ptr(lightDir));
-				}
-			
-				GLCALL(glBindBuffer)(GL_ARRAY_BUFFER, vbo);
-				GLCALL(glBindBuffer)(GL_ELEMENT_ARRAY_BUFFER, ibo);
-			
-				auto numArrays = 3;
-			
-				for (int i = 0; i < numArrays; i++)
-					GLCALL(glEnableVertexAttribArray)(i);
-					
+
+				glUniformMatrix4fv(mvLocation, 1, GL_FALSE, glm::value_ptr(mvMat));
+				glUniformMatrix4fv(pLocation, 1, GL_FALSE, glm::value_ptr(pMat));
+
+				glBindBuffer(GL_ARRAY_BUFFER, vbo);
+				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+
+				auto numArrays = 1;
+
+				for (int i = 0; i < numArrays; i++)			//use vao.. this is silly
+					glEnableVertexAttribArray(i);
+
 				// pozice
-				GLCALL(glVertexAttribPointer)(0u, 3, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, _x)));
-				// texcoord
-				GLCALL(glVertexAttribPointer)(1u, 2, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, _u))); 
-				// normala
-				GLCALL(glVertexAttribPointer)(2u, 3, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, _nx)));
-				
+				glVertexAttribPointer(0u, 3, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, _x)));
+		
 				for (auto modelInfo : scene) {
-					GLCALL(glDrawElements)(GL_TRIANGLES, (GLsizei) modelInfo.indexCount, GL_UNSIGNED_INT, reinterpret_cast<void*>(modelInfo.baseIndex * sizeof(GLuint)));
+					glDrawElements(GL_TRIANGLES, (GLsizei)modelInfo.indexCount, GL_UNSIGNED_INT, reinterpret_cast<void*>(modelInfo.baseIndex * sizeof(GLuint)));
 				}
+
+				for (int i = 0; i < numArrays; i++)
+					glDisableVertexAttribArray(i);
 				
+			
+
+
+			/*  //only for non buffer textures
+			//this bit should clear stencil texture between runs
+			GLfloat clearColor = 0.0f;
+			glBindTexture(GL_TEXTURE_2D, stencilTextureID);
+			glClearTexImage(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, GL_FLOAT, &clearColor);
+			glBindTexture(GL_TEXTURE_2D, 0);
+
+			*/
+				
+				/*
+			///////////////////////////////////////////////////////////////////////////////////////////////////////
+			//no need to disable drawing to color or depth buffer here
+			stencilProgram.useProgram();
+			glDepthMask(GL_FALSE);
+			glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);  //just in case
+
+			glBindBuffer(GL_ARRAY_BUFFER, shadowVolumeBuffer); //bind output of compute shader as array buffer
+			
+			glActiveTexture(GL_TEXTURE0 + 0);
+			glBindTexture(GL_TEXTURE_2D, stencilTextureID);
+
+				mvLocation = glGetUniformLocation(simpleProgram.id, "mvMat");
+				pLocation = glGetUniformLocation(simpleProgram.id, "pMat");
+
+				mvMat = view * model;
+				pMat = projection;
+
+				glUniformMatrix4fv(mvLocation, 1, GL_FALSE, glm::value_ptr(mvMat));
+				glUniformMatrix4fv(pLocation, 1, GL_FALSE, glm::value_ptr(pMat));
+
+
+				numArrays = 2;
+
+				for (int i = 0; i < numArrays; i++)
+					glEnableVertexAttribArray(i);
+
+				// pozice vcetne w -> 4 floaty
+				glVertexAttribPointer(0u, 4, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(ShadowVolumeVertex), reinterpret_cast<void*>(offsetof(ShadowVolumeVertex, x)));
+				// multiplicita
+				glVertexAttribPointer(1u, 1, GL_INT, GL_FALSE, (GLsizei) sizeof(ShadowVolumeVertex), reinterpret_cast<void*>(offsetof(ShadowVolumeVertex, multiplicity)));
+
+				
+					glDrawElements(GL_TRIANGLES, (GLsizei)shadowVolumeVerticesCount, GL_UNSIGNED_INT, nullptr);
+				
+
 				for (int i = 0; i < numArrays; i++)
 					GLCALL(glDisableVertexAttribArray)(i);
 					
-				GLCALL(glBindBuffer)(GL_ARRAY_BUFFER, 0);
-				GLCALL(glBindBuffer)(GL_ELEMENT_ARRAY_BUFFER, 0);	
+
 				GLCALL(glUseProgram)(0);
 			}
+
+			glBindTexture(GL_TEXTURE_2D, 0);
+			glBindBuffer(GL_ARRAY_BUFFER, 0);
+			*/
+			///////////////////////////////////////////////////////////////////////////////////////////////////////
+			lightingProgram.useProgram();
+
+			glClear(GL_DEPTH_BUFFER_BIT); 
+
+			glDepthMask(GL_TRUE);
+			glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+
+			//glEnable(GL_CULL_FACE);
+			//glCullFace(GL_BACK);
+
+				glActiveTexture(GL_TEXTURE0 + 0);
+				glBindTexture(GL_TEXTURE_2D, stencilTextureID);
+				//std::vector<GLshort> tmp2;  //nefunguje.. hmm
+				//tmp2.resize(2500, 0);
+				//glTexSubImage2D(GL_TEXTURE_2D, 0, 300, 400, 50, 50, GL_RED_INTEGER, GL_SHORT, tmp2.data());
+				
+
+					//draw scene with lighting
+
+					//reuse previously declared variables
+					mvLocation = glGetUniformLocation(lightingProgram.id, "mvMat");
+					auto mvNormLocation = glGetUniformLocation(lightingProgram.id, "mvNormMat");
+					pLocation = glGetUniformLocation(lightingProgram.id, "pMat");
+
+					mvMat = view * model;
+					auto mvNormMat = glm::transpose(glm::inverse(glm::mat3(mvMat)));
+					pMat = projection;
+
+					glUniformMatrix4fv(mvLocation, 1, GL_FALSE, glm::value_ptr(mvMat));
+					glUniformMatrix3fv(mvNormLocation, 1, GL_FALSE, glm::value_ptr(mvNormMat));
+					glUniformMatrix4fv(pLocation, 1, GL_FALSE, glm::value_ptr(pMat));
+
+					auto lightDirLocation = glGetUniformLocation(lightingProgram.id, "lightDir");
+
+					if (lightDirLocation != -1)
+					{
+						auto lightDir = glm::normalize(glm::vec3(-1.0f, -1.0f, -1.0f));
+						lightDir = glm::mat3(view) * lightDir;
+						glUniform3fv(lightDirLocation, 1, glm::value_ptr(lightDir));
+					}
+
+					glBindBuffer(GL_ARRAY_BUFFER, vbo);
+					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+
+					numArrays = 2;
+
+					for (int i = 0; i < numArrays; i++)
+						glEnableVertexAttribArray(i);
+
+					// pozice
+					glVertexAttribPointer(0u, 3, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, _x)));
+					// normala
+					glVertexAttribPointer(1u, 3, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, _nx)));
+
+					for (auto modelInfo : scene) {
+						glDrawElements(GL_TRIANGLES, (GLsizei)modelInfo.indexCount, GL_UNSIGNED_INT, reinterpret_cast<void*>(modelInfo.baseIndex * sizeof(GLuint)));
+					}
+
+					for (int i = 0; i < numArrays; i++)
+						glDisableVertexAttribArray(i);
+
 			
+				glBindTexture(GL_TEXTURE_2D, 0);
+
+			GLCALL(glBindBuffer)(GL_ARRAY_BUFFER, 0);
+			GLCALL(glBindBuffer)(GL_ELEMENT_ARRAY_BUFFER, 0);	
+			glUseProgram(0);
+
 			if (volumeVisualizationProgram != 0)
 			{
 				GLCALL(glUseProgram)(volumeVisualizationProgram);
@@ -512,7 +656,7 @@ int main(int argc, char** argv)
 				// pozice
 				GLCALL(glVertexAttribPointer)(0u, 4, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(ShadowVolumeVertex), reinterpret_cast<void*>(offsetof(ShadowVolumeVertex, x)));
 				// multiplicita
-				GLCALL(glVertexAttribIPointer)(1u, 1, GL_UNSIGNED_INT, (GLsizei) sizeof(ShadowVolumeVertex), reinterpret_cast<void*>(offsetof(ShadowVolumeVertex, multiplicity)));
+				GLCALL(glVertexAttribIPointer)(1u, 1, GL_INT, (GLsizei) sizeof(ShadowVolumeVertex), reinterpret_cast<void*>(offsetof(ShadowVolumeVertex, multiplicity)));
 				
 				GLCALL(glDrawArrays)(GL_TRIANGLES, 0, shadowVolumeInfo.triCount * 3);
 				
@@ -532,7 +676,7 @@ int main(int argc, char** argv)
 	}
 	
 	glDeleteTextures(1, &stencilTextureID);
-	glDeleteFramebuffers(1, &stencilFrameBufferID);
+	//glDeleteFramebuffers(1, &stencilFrameBufferID);
 
 	GLCALL(glDeleteBuffers)(1, &vbo);
 	GLCALL(glDeleteBuffers)(1, &ibo);
