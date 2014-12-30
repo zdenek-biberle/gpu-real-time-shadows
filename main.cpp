@@ -35,7 +35,7 @@
 
 struct ShadowVolumeComputationInfo
 {
-	GLuint vertCount;
+	GLuint triCount;
 };
 
 int main(int argc, char** argv)
@@ -62,11 +62,11 @@ int main(int argc, char** argv)
 		SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL/* | SDL_WINDOW_RESIZABLE*/);  //dont know how to resize framebuffer texture right now..
 
 
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+	/*SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);*/
 
 
 	auto glCtx = SDL_GL_CreateContext(window);
@@ -81,11 +81,18 @@ int main(int argc, char** argv)
 	}
 	std::cout << "Jedeme glew: " << glewGetString(GLEW_VERSION) << std::endl;
 	
-	glEnable(GL_DEBUG_OUTPUT);
-	glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-	glDebugMessageCallback(debugFunc, nullptr);
-	GLuint unusedIds = 0;
-	glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, &unusedIds, true);
+	if (glDebugMessageCallback)
+	{	
+		glEnable(GL_DEBUG_OUTPUT);
+		glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+		glDebugMessageCallback(debugFunc, nullptr);
+		GLuint unusedIds = 0;
+		glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, &unusedIds, true);
+	}
+	else
+	{
+		std::cerr << "Není k dispozici debug output" << std::endl;
+	}
 	
 	std::cout << "Loadujeme modely" << std::endl;
 	std::vector<Vertex> vertices;
@@ -210,8 +217,11 @@ int main(int argc, char** argv)
 	auto ticks = SDL_GetTicks();
 	auto ticksDelta = 0;
 	
+	ShadowVolumeComputationInfo shadowVolumeInfo;
+	
 	GLuint baseProgram = 0;
 	GLuint volumeComputationProgram = 0;
+	GLuint volumeVisualizationProgram = 0;
 	
 	auto run = true;
 	while (run)
@@ -314,6 +324,12 @@ int main(int argc, char** argv)
 					volumeComputationProgram = 0;
 				}
 				
+				if (volumeVisualizationProgram != 0)
+				{
+					GLCALL(glDeleteProgram)(volumeVisualizationProgram);
+					volumeVisualizationProgram = 0;
+				}
+				
 				try
 				{
 					std::vector<std::string> vertexShaders;
@@ -349,21 +365,39 @@ int main(int argc, char** argv)
 				{
 					std::cerr << "Chyba kompilace programu pro generování shadow volume: " << ex.what() << std::endl;
 				}
+				
+				try
+				{
+					std::vector<std::string> vertexShaders;
+					std::vector<std::string> fragmentShaders;
+
+					vertexShaders.push_back(readFile("./glsl/volume-visualization/vert.glsl"));
+					fragmentShaders.push_back(readFile("./glsl/volume-visualization/frag.glsl"));
+					
+					volumeVisualizationProgram = createProgram(
+						vertexShaders, 
+						std::vector<std::string>(),
+						fragmentShaders, 
+						std::vector<std::string>());
+				}
+				catch (std::exception& ex)
+				{
+					std::cerr << "Chyba kompilace programu pro generování shadow volume: " << ex.what() << std::endl;
+				}
 			}
 			
 			if (volumeComputationProgram != 0)
 			{
-				ShadowVolumeComputationInfo defaultInfo;
-				defaultInfo.vertCount = 0;
+				GLCALL(glUseProgram)(volumeComputationProgram);
+				
+				shadowVolumeInfo.triCount = 0;
 				
 				GLCALL(glMemoryBarrier)(GL_ALL_BARRIER_BITS);
 				
 				GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, shadowVolumeComputationInfo);
 				GLCALL(glBufferData)(GL_SHADER_STORAGE_BUFFER, sizeof(ShadowVolumeComputationInfo), nullptr, GL_DYNAMIC_READ);
-				GLCALL(glBufferData)(GL_SHADER_STORAGE_BUFFER, sizeof(ShadowVolumeComputationInfo), &defaultInfo, GL_DYNAMIC_READ);
+				GLCALL(glBufferData)(GL_SHADER_STORAGE_BUFFER, sizeof(ShadowVolumeComputationInfo), &shadowVolumeInfo, GL_DYNAMIC_READ);
 				GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, 0);
-				
-				GLCALL(glUseProgram)(volumeComputationProgram);
 				
 				GLCALL(glBindBufferRange)(GL_SHADER_STORAGE_BUFFER, 0, vbo, 0, sizeof(Vertex) * vertices.size());
 				GLCALL(glBindBufferRange)(GL_SHADER_STORAGE_BUFFER, 1, ibo, 0, sizeof(GLuint) * indices.size());
@@ -387,17 +421,18 @@ int main(int argc, char** argv)
 				
 				// debug vypisy
 				GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, shadowVolumeComputationInfo);
-				auto info = *reinterpret_cast<ShadowVolumeComputationInfo*>(GLCALL(glMapBuffer)(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY));
+				shadowVolumeInfo = *reinterpret_cast<ShadowVolumeComputationInfo*>(GLCALL(glMapBuffer)(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY));
 				GLCALL(glUnmapBuffer)(GL_SHADER_STORAGE_BUFFER);
 				GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, 0);
-				std::cout << info.vertCount << std::endl;
+				//std::cout << shadowVolumeInfo.triCount << std::endl;
 				
-				GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, shadowVolumeBuffer);
+				/*GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, shadowVolumeBuffer);
 				auto verts = reinterpret_cast<ShadowVolumeVertex*>(GLCALL(glMapBuffer)(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY));
-				for (unsigned i = 0; i < info.vertCount; i++)
+				for (unsigned i = 0; i < shadowVolumeInfo.triCount  * 3; i++)
 					std::cout << verts[i].x << ", " << verts[i].y << ", " << verts[i].z << ": " << verts[i].multiplicity << ", " << verts[i].isCap << std::endl;
 				GLCALL(glUnmapBuffer)(GL_SHADER_STORAGE_BUFFER);
-				GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, 0);
+				GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, 0);*/
+				GLCALL(glUseProgram)(0);
 			}
 			
 			if (baseProgram != 0)
@@ -446,6 +481,45 @@ int main(int argc, char** argv)
 				for (int i = 0; i < numArrays; i++)
 					GLCALL(glDisableVertexAttribArray)(i);
 					
+				GLCALL(glBindBuffer)(GL_ARRAY_BUFFER, 0);
+				GLCALL(glBindBuffer)(GL_ELEMENT_ARRAY_BUFFER, 0);	
+				GLCALL(glUseProgram)(0);
+			}
+			
+			if (volumeVisualizationProgram != 0)
+			{
+				GLCALL(glUseProgram)(volumeVisualizationProgram);
+			
+				auto mvLocation = GLCALL(glGetUniformLocation)(volumeVisualizationProgram, "mvMat");
+				auto mvNormLocation = GLCALL(glGetUniformLocation)(volumeVisualizationProgram, "mvNormMat");
+				auto pLocation = GLCALL(glGetUniformLocation)(volumeVisualizationProgram, "pMat");
+				
+				auto mvMat = view * model;
+				auto mvNormMat = glm::transpose(glm::inverse(glm::mat3(mvMat)));
+				auto pMat = projection;
+				
+				GLCALL(glUniformMatrix4fv)(mvLocation, 1, GL_FALSE, glm::value_ptr(mvMat));
+				GLCALL(glUniformMatrix3fv)(mvNormLocation, 1, GL_FALSE, glm::value_ptr(mvNormMat));
+				GLCALL(glUniformMatrix4fv)(pLocation, 1, GL_FALSE, glm::value_ptr(pMat));
+			
+				GLCALL(glBindBuffer)(GL_ARRAY_BUFFER, shadowVolumeBuffer);
+			
+				auto numArrays = 2;
+			
+				for (int i = 0; i < numArrays; i++)
+					GLCALL(glEnableVertexAttribArray)(i);
+					
+				// pozice
+				GLCALL(glVertexAttribPointer)(0u, 4, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(ShadowVolumeVertex), reinterpret_cast<void*>(offsetof(ShadowVolumeVertex, x)));
+				// multiplicita
+				GLCALL(glVertexAttribIPointer)(1u, 1, GL_UNSIGNED_INT, (GLsizei) sizeof(ShadowVolumeVertex), reinterpret_cast<void*>(offsetof(ShadowVolumeVertex, multiplicity)));
+				
+				GLCALL(glDrawArrays)(GL_TRIANGLES, 0, shadowVolumeInfo.triCount * 3);
+				
+				for (int i = 0; i < numArrays; i++)
+					GLCALL(glDisableVertexAttribArray)(i);
+					
+				GLCALL(glBindBuffer)(GL_ARRAY_BUFFER, 0);
 				GLCALL(glUseProgram)(0);
 			}
 		
@@ -462,6 +536,8 @@ int main(int argc, char** argv)
 
 	GLCALL(glDeleteBuffers)(1, &vbo);
 	GLCALL(glDeleteBuffers)(1, &ibo);
+	GLCALL(glDeleteBuffers)(1, &shadowVolumeBuffer);
+	GLCALL(glDeleteBuffers)(1, &shadowVolumeComputationInfo);
 	SDL_GL_DeleteContext(glCtx);
 	SDL_DestroyWindow(window);
 	SDL_Quit();

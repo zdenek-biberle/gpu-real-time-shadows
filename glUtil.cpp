@@ -32,7 +32,7 @@ void GLAPIENTRY debugFunc(GLenum source, GLenum type, GLuint id, GLenum severity
 		case GL_DEBUG_SEVERITY_LOW_ARB: typeSeverity = "Low"; break;
 	}
 	
-	std::cout << errorType << " in " << srcName << " - " << id << " [" << typeSeverity << "]: " << std::string(message, length);
+	std::cout << errorType << " in " << srcName << " - " << id << " [" << typeSeverity << "]: " << std::string(message, length) << std::endl;
 	
 }
 

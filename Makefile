@@ -1,4 +1,4 @@
-CXXFLAGS += --std=c++11 -DGLM_FORCE_RADIANS
+CXXFLAGS += --std=c++11 -DGLM_FORCE_RADIANS -g3
 LDLIBS += -lGLEW -lGL -lSDL2 -lassimp
 PROGRAM = gpu-real-time-shadows
 

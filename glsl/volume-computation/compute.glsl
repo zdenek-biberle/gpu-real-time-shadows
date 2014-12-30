@@ -5,6 +5,7 @@ layout (local_size_x = 128) in;
 uniform uint indexCount;
 uniform uint indexOffset;
 uniform vec3 lightDir = vec3(-1.0, -1.0, -1.0);
+uniform float extrusionDistance = 100.0;
 
 struct InVertex
 {
@@ -44,7 +45,7 @@ layout (std430, binding = 2) writeonly buffer OutVertices
 
 layout (std430, binding = 3) writeonly buffer OutInfo
 {
-	uint outVertCount;
+	uint outTriCount;
 };
 
 vec3 position(InVertex vert)
@@ -61,9 +62,16 @@ bool isFrontFacing(vec3 a, vec3 b, vec3 c)
 	//return a.x > 0 && b.x > 0 && c.x > 0;
 }
 
-void emitTriangle(vec3 a, vec3 b, vec3 c, uint multiplicity, uint isCap)
+// Rezervuje trojuhelniky pro emitTriangle. Vhodne pro n > 1.
+uint reserveTriangles(uint n)
 {
-	uint idx = atomicAdd(outVertCount, 3);
+	return atomicAdd(outTriCount, n);
+}
+
+void emitTriangle(uint idx, vec3 a, vec3 b, vec3 c, uint multiplicity, uint isCap)
+{
+	idx *= 3;
+	
 	OutVertex outVertex;
 	outVertex.multiplicity = multiplicity;
 	outVertex.isCap = isCap;
@@ -74,6 +82,17 @@ void emitTriangle(vec3 a, vec3 b, vec3 c, uint multiplicity, uint isCap)
 	outVertices[idx + 1] = outVertex;
 	outVertex.position = vec4(c, 1.0);
 	outVertices[idx + 2] = outVertex;
+}
+
+// zjisti, zda je bod point pred nebo za rovinou definovanou body a, b a c
+bool isInFront(vec3 point, vec3 a, vec3 b, vec3 c)
+{
+	vec3 ab = b - a;
+	vec3 ac = c - a;
+	
+	vec3 normal = normalize(cross(ab, ac));
+	vec3 pointvec = normalize(point - a);
+	return dot(normal, pointvec) > 0; // TODO mozna prehodit za <
 }
 
 void main()
@@ -91,51 +110,73 @@ void main()
 		vec3 a1 = position(inVertices[aidx[1]]);
 		vec3 a2 = position(inVertices[aidx[2]]);
 		
-		bool thisFrontFacing = isFrontFacing(a0, a1, a2);
+		vec3 extrusionVec = extrusionDistance * normalize(lightDir);
 		
-		if (thisFrontFacing)
+		if (isFrontFacing(a0, a1, a2))
 		{
-			emitTriangle(a0, a1, a2, 0, 1);
+			uint triIdx = reserveTriangles(2);
+			emitTriangle(triIdx, a0, a1, a2, 1, 1);
+			emitTriangle(triIdx + 1, a0 + extrusionVec, a2 + extrusionVec, a1 + extrusionVec, 1, 1);	
 		}
 		
 		uint edgeIndices[] = {aidx[0], aidx[1], aidx[1], aidx[2], aidx[2], aidx[0]};
 		uint edgeMultiplicity[] = {0, 0, 0};
 		
-		for (uint i = 0; i < indexCount; i += 3)
+		for (uint triIdx = 0; triIdx < indexCount; triIdx += 3)
 		{
-			if (i != triangleId * 3)
+			for (uint edgeIdx = 0; edgeIdx < 3; edgeIdx++)
 			{
-				for (uint edgeIdx = 0; edgeIdx < 3; edgeIdx++)
-				{
-					uint thisEdge[2];
-					thisEdge[0] = edgeIndices[i * 2];
-					thisEdge[1] = edgeIndices[i * 2 + 1];
-					
-					uint bidx[3];
-					bidx[0] = inIndices[i + indexOffset];
-					bidx[1] = inIndices[i + 1 + indexOffset];
-					bidx[2] = inIndices[i + 2 + indexOffset];
+				uint thisEdge[2];
+				thisEdge[0] = edgeIndices[edgeIdx * 2];
+				thisEdge[1] = edgeIndices[edgeIdx * 2 + 1];
 				
-					uint matchingVertices = 0;
-					for (uint edgeVertIdx = 0; edgeVertIdx < 2; edgeVertIdx++)
-					for (uint otherVertIdx = 0; otherVertIdx < 3; otherVertIdx++)
+				uint bidx[3];
+				bidx[0] = inIndices[triIdx + indexOffset];
+				bidx[1] = inIndices[triIdx + 1 + indexOffset];
+				bidx[2] = inIndices[triIdx + 2 + indexOffset];
+			
+				uint matchingVertices = 0;
+				uint thirdVertIdx = 0;
+				for (uint otherVertIdx = 0; otherVertIdx < 3; otherVertIdx++)
+				{
+					if (thisEdge[0] == bidx[otherVertIdx]
+						|| thisEdge[1] == bidx[otherVertIdx])
 					{
-						if (thisEdge[edgeVertIdx] == bidx[otherVertIdx]) matchingVertices++;
+						matchingVertices++;
 					}
-					
-					if (matchingVertices >= 2)
+					else
 					{
-						// kazdou hranu zpracovava trojuhelnik s nejnizsim indexem
-						if (i < triangleId * 3) break;
-						
-						vec3 b0 = position(inVertices[bidx[0]]);
-						vec3 b1 = position(inVertices[bidx[1]]);
-						vec3 b2 = position(inVertices[bidx[2]]);
-					
-						if (isFrontFacing(b0, b1, b2) != thisFrontFacing)
-						
+						// nenasli jsme rovnocenny vertex v trojuhelniku,
+						// takze bud tento trojuhelnik nesdili tuto hranu
+						// a nebo sdili a tento vertex je treti nesdileny
+						thirdVertIdx = bidx[otherVertIdx];
 					}
 				}
+				
+				if (matchingVertices == 2)
+				{
+					// kazdou hranu zpracovava trojuhelnik s nejnizsim indexem
+					if (triIdx < triangleId * 3) break;
+					
+					vec3 edge0 = position(inVertices[thisEdge[0]]);
+					vec3 edge1 = position(inVertices[thisEdge[1]]);
+					vec3 thirdVert = position(inVertices[thirdVertIdx]);
+				
+					edgeMultiplicity[edgeIdx] += isInFront(thirdVert, edge0, edge1, edge1 + lightDir) ? 1 : -1;
+				}
+			}
+		}
+		
+		for (uint edgeIdx = 0; edgeIdx < 3; edgeIdx++)
+		{
+			if (edgeMultiplicity[edgeIdx] != 0)
+			{
+				vec3 edge0 = position(inVertices[edgeIndices[edgeIdx * 2]]);
+				vec3 edge1 = position(inVertices[edgeIndices[edgeIdx * 2 + 1]]);
+				
+				uint triIdx = reserveTriangles(2);
+				emitTriangle(triIdx, edge0, edge1, edge0 + extrusionVec, edgeMultiplicity[edgeIdx], 0);
+				emitTriangle(triIdx + 1, edge1, edge1 + extrusionVec, edge0 + extrusionVec, edgeMultiplicity[edgeIdx], 0);
 			}
 		}
 	}
