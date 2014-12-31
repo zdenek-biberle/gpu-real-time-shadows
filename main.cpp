@@ -221,7 +221,7 @@ int main(int argc, char** argv)
 	bool rotate = true;
 	bool loadShaders = true;
 	
-	bool drawShadowVolume = true;
+	bool drawShadowVolume = false;
 	
 	auto ticks = SDL_GetTicks();
 	auto ticksDelta = 0;
@@ -485,9 +485,9 @@ int main(int argc, char** argv)
 			//glClear(GL_DEPTH_BUFFER_BIT);
 			stencilProgram.useProgram();
 			glDepthMask(GL_FALSE);
-			glDepthFunc(GL_GREATER);
+			glDepthFunc(GL_LESS);
 			glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);  //just in case
-			glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+			//glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
 			glBindBuffer(GL_ARRAY_BUFFER, shadowVolumeBuffer); //bind output of compute shader as array buffer
 			

@@ -22,7 +22,7 @@ void main()
 		m = -IN.multiplicity;
 	}
 
-	imageAtomicAdd(stencilTexture, ivec2(gl_FragCoord.xy), 100);
+	imageAtomicAdd(stencilTexture, ivec2(gl_FragCoord.xy), m);
 	
 	if (m == 0)
 		dummy = vec4(1.0, 1.0, 1.0, 1.0);

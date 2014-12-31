@@ -26,21 +26,35 @@ void main()
 		outColor = vec4(1.0, 0.0, 0.0, 1.0);
 	else if (number == -2)
 		outColor = vec4(0.0, 1.0, 1.0, 1.0);
-	else if (number == 3)
+	else if (number == 4)
 		outColor = vec4(0.0, 1.0, 0.0, 1.0);
-	else if (number == -3)
+	else if (number == -4)
 		outColor = vec4(0.0, 0.0, 1.0, 1.0);
 	else
 		outColor = vec4(0.5, 0.5, 0.5, 1.0);
+		
+	if (number == 0)
+	{
+		outColor = vec4(0.5, 0.5, 0.5, 1.0);
+	}	
+	else if (number < 0)
+	{
+		outColor = vec4(1.0, 0.5, 0.5, 1.0);
+	}
+	else
+	{
+		outColor = vec4(0.5, 0.5, 1.0, 1.0);
+	}
+	
+	vec3 normNormal = normalize(IN.normal);
+	vec3 diffuse = vec3(max(0.0, dot(normNormal, -lightDir)));
+	vec3 light = (number > 0 ? 0 : 1) * diffuse + ambient;
+
+	outColor.z = 1.0;
+	outColor.xyz = vec3(0.5, 0.5, 1.0) * light;
+	
 	/*if(number == 0){
-		vec3 normNormal = normalize(IN.normal);
-	
-		vec3 diffuse = vec3(max(0.0, dot(normNormal, -lightDir)));
-	
-		vec3 light = diffuse + ambient;
-	
-		outColor.z = 1.0;
-		outColor.xyz = vec3(0.5, 0.5, 1.0) * light;
+
 
 	} else if(number == 1){
 		vec3 normNormal = normalize(IN.normal);

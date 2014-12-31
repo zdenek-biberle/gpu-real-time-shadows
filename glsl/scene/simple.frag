@@ -12,6 +12,6 @@ in VertexOutput
 void main()
 {
 
-	gl_FragDepth = IN.position.z;
+	//gl_FragDepth = IN.position.z;
 
 }
