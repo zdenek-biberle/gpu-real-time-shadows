@@ -145,16 +145,18 @@ uint doEdgeLookup(uint edge0, uint edge1)
 		else break;
 	}
 	
-	
-	if (midIdx == 0) return 0;
-	// postupne se posuneme na nejnizsi shodny prvek
-	while (node.idx0 == edge0 && node.idx1 == edge1)
+	while (midIdx > 0)
 	{
-		midIdx--;
-		node = edgeLookup[midIdx];
+		// pokusime se najit nejnizsi shodny prvek
+		node = edgeLookup[midIdx - 1];
+		if (node.idx0 == edge0 && node.idx1 == edge1)
+		{
+			midIdx--;
+		}
+		else break;
 	}
 	
-	return midIdx + 1;
+	return midIdx;
 }
 
 void main()
