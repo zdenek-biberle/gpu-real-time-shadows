@@ -183,7 +183,7 @@ uint doEdgeLookup(uint edge0, uint edge1)
 
 void compute()
 {
-
+	outVertices.clear();
 	outTriCount = 0;
 	for (int i = 0; i < indexCount / 3; i++){
 		uint triangleId = i;
@@ -323,7 +323,7 @@ int main(int argc, char** argv)
 	
 	std::cout << "Generujeme buffer pro vyhledávání hran" << std::endl;
 	
-	//std::vector<EdgeLookupNode> edgeLookup;
+	//std::vector<EdgeLookupNode> edgeLookup;		//used global one..
 	generateEdgeLookup(simplifiedModel, simplifiedIndices, edgeLookup);
 	std::vector<decltype(environmentModel)*> scene = { &environmentModel, &shadowModel };
 	
