@@ -131,6 +131,7 @@ bool isInFront(vec3 point, vec3 a, vec3 b, vec3 c)
 void compute()
 {
 
+	outTriCount = 0;
 	for (int i = 0; i < indexCount / 3; i++){
 		uint triangleId = i;
 
@@ -633,7 +634,7 @@ int main(int argc, char** argv)
 					glBindBuffer(GL_ARRAY_BUFFER, shadowVolumeBuffer);
 					glBufferData(GL_ARRAY_BUFFER, outVertices.size() * sizeof(OutVertex), outVertices.data(), GL_DYNAMIC_DRAW);
 					glBindBuffer(GL_ARRAY_BUFFER, 0);
-					shadowVolumeInfo.triCount = outVertices.size();
+					shadowVolumeInfo.triCount = outTriCount;
 				}
 				
 				/*GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, shadowVolumeBuffer);
