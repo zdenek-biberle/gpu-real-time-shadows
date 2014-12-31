@@ -7,11 +7,8 @@
 %---------------------------------------------------------------------------
 \section{Zadání}
 
-Zde napište informace k zadání (nejde jen o přepis toho, co je na webu;
-komentujte vaše vlastní zpřesnění zadání, zaměření, důrazy, pojetí atd.). Text
-strukturujte, použijte odrážky, číslování$\ldots$
-
-Rozsah: cca 10 odrážek
+Implementace generovaní shadow volumes siluet pomocí compute shaderů a následné využití těchto siluet
+pro tvorbu stínů pomocí z-fail algoritmu.
 
 %---------------------------------------------------------------------------
 \section{Použité technologie}
@@ -26,6 +23,7 @@ Rozsah: cca 10 odrážek
 		\end{itemize}
 	\item SDL2
 	\item GLM
+	\item glew
 \end{itemize}
 
 \section{Technologie použité pro tvorbu}
@@ -36,19 +34,13 @@ Rozsah: cca 10 odrážek
 
 %---------------------------------------------------------------------------
 \section{Použité zdroje}
-
-Zde vypište, které zdroje jste použili k tvorbě: hotový kód, hotová data
-(obrázky, modely, $\ldots$), studijní materiály. Pokud vyplyne, že v projektu
-je použit kód nebo data, která nejsou uvedena tady, jedná se o závažný problém
-a projekt bude pravděpodobně hodnocen 0 body.
-
-Rozsah: potřebný počet odrážek
-
+	\begin{itemize}
+		\item Stanford bunny
+	\end{itemize}
 %---------------------------------------------------------------------------
 \section{Nejdůležitější dosažené výsledky}
 
-Popište 3 věci, které jsou na vašem projektu nejlepší. Nejlépe ukažte a
-komentujte obrázky, v nejhorším případě vypište textově.
+Funguje generování shadow volume na Nvidia kartách.
 
 %---------------------------------------------------------------------------
 \section{Ovládání vytvořeného programu}
@@ -64,6 +56,7 @@ komentujte obrázky, v nejhorším případě vypište textově.
 \section{Zvláštní použité znalosti}
 
 Použití OpenGL compute shaderů se různě liší od použití OpenCL či CUDA. To vyžadovalo získání dodatečných informací o jejich využívání a o komunikaci s němi.
+Využití image load/store v shaderech openGL pro vytvoření vlastního "stencil bufferu".
 
 %---------------------------------------------------------------------------
 \section{Rozdělení práce v týmu}
@@ -78,7 +71,7 @@ Použití OpenGL compute shaderů se různě liší od použití OpenCL či CUDA
 
 Značnou část času jsem strávil nad komunikací mezi aplikací a compute shaderů. Později jsem zjistil, že implementace SSBO na grafických kartách od AMD se v současnosti vyznačuje různými problémy a tudíž jsem řešil nevyřešitelné.
 
-\paragraph{Vít Hodes} TODO Něco sem
+\paragraph{Vít Hodes} Přijít na to, jak impementovat celočíselný "stencil buffer" s obecným přístupem ze shaderů. Po prozkoumání několika slepých cest se dospělo k řešení pomocí iimage2D a atomického sčítání. Taky implementovat stíny nad shadow volume, který se mi na AMD kartě negeneruje správně se moc nedá.
 
 %---------------------------------------------------------------------------
 \section{Zkušenosti získané řešením projektu}
@@ -91,46 +84,43 @@ Značnou část času jsem strávil nad komunikací mezi aplikací a compute sha
 
 \paragraph{Vít Hodes}
 \begin{itemize}
-	\item Něco sem
+	\item Framebuffer object, color/depth attachment
+	\item v GLSL existují i shadow samplery a image samplery
+	\item image load/store, atomické operace obecně v shaderech
+	
 \end{itemize}
 
 %---------------------------------------------------------------------------
 \section{Autoevaluace}
 
-Ohodnoťte vaše řešení v jednotlivých kategoriích (0 – nic neuděláno,
-zoufalství, 100\% – dokonalost sama). Projekt, který ve finále obdrží plný
-počet bodů, může mít složky hodnocené i hodně nízko. Uvedení hodnot blízkých
-100\% ve všech nebo mnoha kategoriích může ukazovat na nepochopení problematiky
-nebo na snahu kamuflovat slabé stránky projektu. Bodově hodnocena bude i
-schopnost vnímat silné a slabé stránky svého řešení.
-
-\paragraph{Technický návrh (50\%):} (analýza, dekompozice problému, volba
+\paragraph{Technický návrh (70\%):} (analýza, dekompozice problému, volba
 vhodných prostředků, $\ldots$) 
-Stručně (1-2 řádky) komentujte hodnocení. 
 
-\paragraph{Programování (50\%):} (kvalita a čitelnost kódu, spolehlivost běhu,
+
+\paragraph{Programování (70\%):} (kvalita a čitelnost kódu, spolehlivost běhu,
 obecnost řešení, znovupoužitelnost, $\ldots$)
-Stručně (1-2 řádky) komentujte hodnocení. 
+Vzhledem ke kratšímu rozsahu se moc neuplatnuje zapouzdření ve vykreslovací části. Znovupoužitelnost
+spíše znalostí než konkrétního kódu.
 
-\paragraph{Vzhled vytvořeného řešení (50\%):} (uvěřitelnost zobrazení,
+\paragraph{Vzhled vytvořeného řešení (40\%):} (uvěřitelnost zobrazení,
 estetická kvalita, vhled GUI, $\ldots$)
-Stručně (1-2 řádky) komentujte hodnocení. 
+Estetická kvalita nebyla cílem řešení.
 
-\paragraph{Využití zdrojů (50\%):} (využití existujícího kódu a dat, využití
+\paragraph{Využití zdrojů (70\%):} (využití existujícího kódu a dat, využití
 literatury, $\ldots$)
-Stručně (1-2 řádky) komentujte hodnocení. 
+Bez dokumentací OpenGL API by tento projekt nevznikl.
 
 \paragraph{Hospodaření s časem (50\%):} (rovnoměrné dotažení částí projektu,
 míra spěchu, chybějící části řešení, $\ldots$)
-Stručně (1-2 řádky) komentujte hodnocení. 
+Přiměřené. 
 
-\paragraph{Spolupráce v týmu (50\%):} (komunikace, dodržování dohod, vzájemné
+\paragraph{Spolupráce v týmu (80\%):} (komunikace, dodržování dohod, vzájemné
 spolehnutí, rovnoměrnost, $\ldots$)
-Stručně (1-2 řádky) komentujte hodnocení. 
+Komunikace dobrá.
 
-\paragraph{Celkový dojem (50\%):} (pracnost, získané dovednosti, užitečnost,
+\paragraph{Celkový dojem (70\%):} (pracnost, získané dovednosti, užitečnost,
 volba zadání, cokoliv, $\ldots$)
-Stručně (5-10 řádků) komentujte hodnocení. 
+Projekt byl zajímavý a potenciálně velmi užitečný. Škoda problémů s různými platformami(AMD x Nvidia).
 
 %---------------------------------------------------------------------------
 \section{Doporučení pro budoucí zadávání projektů}
