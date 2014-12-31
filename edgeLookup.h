@@ -9,7 +9,13 @@
 struct EdgeLookupNode
 {
 	EdgeLookupNode(GLuint idx0, GLuint idx1, GLuint idx2, GLuint triangleIdx);
-	
+	EdgeLookupNode(){
+		idx0 = 0;
+		idx1 = 0;
+		idx2 = 0;
+		triangleIdx = 0;
+	}
+
 	GLuint idx0;
 	GLuint idx1;
 	GLuint idx2;
