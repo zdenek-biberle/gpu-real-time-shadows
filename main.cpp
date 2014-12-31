@@ -96,7 +96,7 @@ uint reserveTriangles(uint n)
 {
 	uint old = outTriCount;
 	outTriCount = outTriCount + n;
-
+	outVertices.resize(outTriCount * 3);
 	return old;
 }
 
@@ -392,7 +392,7 @@ int main(int argc, char** argv)
 		// *7, protože pro každý trojúhelník můžeme potenciálně vygenerovat až 7 dalších trojúhelníků
 		GLCALL(glBufferData)(GL_SHADER_STORAGE_BUFFER, shadowModel.indexCount * sizeof(ShadowVolumeVertex) * 7, nullptr, GL_DYNAMIC_COPY);
 		
-		outVertices.resize(indices.size() * 8);	// CPU
+		outVertices.resize(indices.size() * 7);	// CPU
 
 		GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, shadowVolumeComputationInfo);
 
@@ -630,7 +630,10 @@ int main(int argc, char** argv)
 				if (CPU){
 					//outVertices.clear();
 					compute();
+					glBindBuffer(GL_ARRAY_BUFFER, shadowVolumeBuffer);
 					glBufferData(GL_ARRAY_BUFFER, outVertices.size() * sizeof(OutVertex), outVertices.data(), GL_DYNAMIC_DRAW);
+					glBindBuffer(GL_ARRAY_BUFFER, 0);
+					shadowVolumeInfo.triCount = outVertices.size();
 				}
 				
 				/*GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, shadowVolumeBuffer);
@@ -719,11 +722,20 @@ int main(int argc, char** argv)
 			for (int i = 0; i < numArrays; i++)
 				glEnableVertexAttribArray(i);
 
-			// pozice vcetne w -> 4 floaty
-			glVertexAttribPointer(0u, 4, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(ShadowVolumeVertex), reinterpret_cast<void*>(offsetof(ShadowVolumeVertex, x)));
-			// multiplicita
-			glVertexAttribIPointer(1u, 1, GL_INT, (GLsizei) sizeof(ShadowVolumeVertex), reinterpret_cast<void*>(offsetof(ShadowVolumeVertex, multiplicity)));
-
+			if (CPU){
+				// pozice vcetne w -> 4 floaty
+				glVertexAttribPointer(0u, 4, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(OutVertex), reinterpret_cast<void*>(offsetof(OutVertex, position.x)));
+				// multiplicita
+				glVertexAttribIPointer(1u, 1, GL_INT, (GLsizei) sizeof(OutVertex), reinterpret_cast<void*>(offsetof(OutVertex, multiplicity)));
+			
+			
+			}
+			else {
+				// pozice vcetne w -> 4 floaty
+				glVertexAttribPointer(0u, 4, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(ShadowVolumeVertex), reinterpret_cast<void*>(offsetof(ShadowVolumeVertex, x)));
+				// multiplicita
+				glVertexAttribIPointer(1u, 1, GL_INT, (GLsizei) sizeof(ShadowVolumeVertex), reinterpret_cast<void*>(offsetof(ShadowVolumeVertex, multiplicity)));
+			}
 			glDrawArrays(GL_TRIANGLES, 0, shadowVolumeInfo.triCount * 3);
 
 			for (int i = 0; i < numArrays; i++)
