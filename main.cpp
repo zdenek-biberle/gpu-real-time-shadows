@@ -40,6 +40,194 @@ struct ShadowVolumeComputationInfo
 	GLuint triCount;
 };
 
+using namespace glm;
+
+bool CPU = true;
+ uint indexCount;
+ uint indexOffset;
+ vec3 lightDir = vec3(-1.0, -1.0, -1.0);
+ float extrusionDistance = 100.0;
+
+
+
+struct InVertex
+{
+	float x;
+	float y;
+	float z;
+	int padding;
+};
+
+struct OutVertex
+{
+	vec4 position;
+	int multiplicity;
+	uint isCap;
+	uint padding0;
+	uint padding1;
+};
+
+
+	//vec4 position;
+	std::vector<InVertex> inVertices;
+	std::vector<GLuint> inIndices;
+	//std::vector<InVertex> inTriangles;
+	std::vector<OutVertex> outVertices;
+	uint outTriCount;
+
+
+
+vec3 position(InVertex vert)
+{
+	return vec3(vert.x, vert.y, vert.z);
+}
+
+bool isFrontFacing(vec3 a, vec3 b, vec3 c)
+{
+	vec3 ab = b - a;
+	vec3 ac = c - a;
+	vec3 n = cross(ab, ac);
+	return dot(normalize(n), normalize(lightDir)) < 0;
+	//return a.x > 0 && b.x > 0 && c.x > 0;
+}
+
+// Rezervuje trojuhelniky pro emitTriangle. Vhodne pro n > 1.
+uint reserveTriangles(uint n)
+{
+	uint old = outTriCount;
+	outTriCount = outTriCount + n;
+
+	return old;
+}
+
+void emitTriangle(uint idx, vec3 a, vec3 b, vec3 c, int multiplicity, uint isCap)
+{
+	idx *= 3;
+
+
+	OutVertex outVertex;
+	outVertex.multiplicity = multiplicity;
+	outVertex.isCap = isCap;
+
+	outVertex.position = vec4(a, 1.0);
+	outVertices[idx] = outVertex;
+	outVertex.position = vec4(b, 1.0);
+	outVertices[idx + 1] = outVertex;
+	outVertex.position = vec4(c, 1.0);
+	outVertices[idx + 2] = outVertex;
+}
+
+// zjisti, zda je bod point pred nebo za rovinou definovanou body a, b a c
+bool isInFront(vec3 point, vec3 a, vec3 b, vec3 c)
+{
+	vec3 ab = b - a;
+	vec3 ac = c - a;
+
+	vec3 normal = normalize(cross(ab, ac));
+	vec3 pointvec = normalize(point - a);
+	return dot(pointvec, normal) > 0.0;
+}
+
+void compute()
+{
+
+	for (int i = 0; i < indexCount / 3; i++){
+		uint triangleId = i;
+
+		if (triangleId * 3 < indexCount)
+		{
+			uint firstIdx = indexOffset + triangleId * 3;
+
+			uint aidx[3];
+			aidx[0] = inIndices[firstIdx];
+			aidx[1] = inIndices[firstIdx + 1];
+			aidx[2] = inIndices[firstIdx + 2];
+			vec3 a0 = position(inVertices[aidx[0]]);
+			vec3 a1 = position(inVertices[aidx[1]]);
+			vec3 a2 = position(inVertices[aidx[2]]);
+
+			vec3 extrusionVec = extrusionDistance * normalize(lightDir);
+
+			if (isFrontFacing(a0, a1, a2))
+			{
+				uint triIdx = reserveTriangles(2);
+				emitTriangle(triIdx, a0, a1, a2, -2, 1);
+				emitTriangle(triIdx + 1, a0 + extrusionVec, a2 + extrusionVec, a1 + extrusionVec, -2, 1);
+			}
+
+			uint edgeIndices[] = { aidx[0], aidx[1], aidx[1], aidx[2], aidx[2], aidx[0] };
+			int edgeMultiplicity[] = { 0, 0, 0 };
+			bool ignoredEdge[] = { false, false, false };
+
+			for (uint idxIdx = 0; idxIdx < indexCount; idxIdx += 3)
+			{
+				for (uint edgeIdx = 0; edgeIdx < 3; edgeIdx++)
+				{
+					if (!ignoredEdge[edgeIdx])
+					{
+						uint thisEdge[2];
+						thisEdge[0] = edgeIndices[edgeIdx * 2];
+						thisEdge[1] = edgeIndices[edgeIdx * 2 + 1];
+
+						uint bidx[3];
+						bidx[0] = inIndices[idxIdx + indexOffset];
+						bidx[1] = inIndices[idxIdx + 1 + indexOffset];
+						bidx[2] = inIndices[idxIdx + 2 + indexOffset];
+
+						uint matchingVertices = 0;
+						uint thirdVertIdx = 0;
+						for (uint otherVertIdx = 0; otherVertIdx < 3; otherVertIdx++)
+						{
+							if (thisEdge[0] == bidx[otherVertIdx]
+								|| thisEdge[1] == bidx[otherVertIdx])
+							{
+								matchingVertices++;
+							}
+							else
+							{
+								// nenasli jsme rovnocenny vertex v trojuhelniku,
+								// takze bud tento trojuhelnik nesdili tuto hranu
+								// a nebo sdili a tento vertex je treti nesdileny
+								thirdVertIdx = bidx[otherVertIdx];
+							}
+						}
+
+						if (matchingVertices == 2)
+						{
+							// kazdou hranu zpracovava trojuhelnik s nejnizsim indexem
+							if (idxIdx < triangleId * 3)
+							{
+								ignoredEdge[edgeIdx] = true;
+								break;
+							}
+
+							vec3 edge0 = position(inVertices[thisEdge[0]]);
+							vec3 edge1 = position(inVertices[thisEdge[1]]);
+							vec3 thirdVert = position(inVertices[thirdVertIdx]);
+
+							edgeMultiplicity[edgeIdx] += isInFront(thirdVert, edge0, edge1, edge1 + lightDir) ? -1 : 1;
+						}
+					}
+				}
+			}
+
+			for (uint edgeIdx = 0; edgeIdx < 3; edgeIdx++)
+			{
+				if (!ignoredEdge[edgeIdx] && edgeMultiplicity[edgeIdx] != 0)
+				{
+					vec3 edge0 = position(inVertices[edgeIndices[edgeIdx * 2]]);
+					vec3 edge1 = position(inVertices[edgeIndices[edgeIdx * 2 + 1]]);
+
+					uint triIdx = reserveTriangles(2);
+					emitTriangle(triIdx, edge0, edge1, edge0 + extrusionVec, edgeMultiplicity[edgeIdx], 0);
+					emitTriangle(triIdx + 1, edge1, edge1 + extrusionVec, edge0 + extrusionVec, edgeMultiplicity[edgeIdx], 0);
+				}
+			}
+		}
+
+	} //for
+}
+
 int main(int argc, char** argv)
 {
 	if (argc < 3)
@@ -185,12 +373,26 @@ int main(int argc, char** argv)
 		GLCALL(glBindBuffer)(GL_ARRAY_BUFFER, vbo);
 		GLCALL(glBufferData)(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_STATIC_DRAW);
 
+		//must reformat
+		for (auto vertex : vertices){
+			InVertex v;
+			v.x = vertex._x;
+			v.y = vertex._y;
+			v.z = vertex._z;
+			inVertices.push_back(v);
+		}
+		
+
 		GLCALL(glBindBuffer)(GL_ELEMENT_ARRAY_BUFFER, ibo);
 		GLCALL(glBufferData)(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), indices.data(), GL_STATIC_DRAW);
+		
+		inIndices = indices;  //CPU
 
 		GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, shadowVolumeBuffer);
 		// *7, protože pro každý trojúhelník můžeme potenciálně vygenerovat až 7 dalších trojúhelníků
 		GLCALL(glBufferData)(GL_SHADER_STORAGE_BUFFER, shadowModel.indexCount * sizeof(ShadowVolumeVertex) * 7, nullptr, GL_DYNAMIC_COPY);
+		
+		outVertices.resize(indices.size() * 8);	// CPU
 
 		GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, shadowVolumeComputationInfo);
 
@@ -388,8 +590,11 @@ int main(int argc, char** argv)
 					auto lightDir = glm::normalize(glm::vec3(-1.0f, -1.0f, -1.0f));
 					lightDir = glm::mat3(glm::inverse(model)) * lightDir;
 					glUniform3fv(lightDirLocation, 1, glm::value_ptr(lightDir));
+
+					::lightDir = lightDir;   //CPU
 				}
 				
+
 				GLCALL(glBindBufferBase)(GL_SHADER_STORAGE_BUFFER, 0, simpleVbo);
 				GLCALL(glBindBufferBase)(GL_SHADER_STORAGE_BUFFER, 1, simpleIbo);
 				GLCALL(glBindBufferBase)(GL_SHADER_STORAGE_BUFFER, 2, shadowVolumeBuffer);
@@ -397,24 +602,36 @@ int main(int argc, char** argv)
 				
 				auto indexOffsetLocation = GLCALL(glGetUniformLocation)(volumeComputationProgram, "indexOffset");
 				GLCALL(glUniform1ui)(indexOffsetLocation, simplifiedModel.baseIndex);
+
+				indexOffset = simplifiedModel.baseIndex;		//pro CPU
 				
 				auto indexCountLocation = GLCALL(glGetUniformLocation)(volumeComputationProgram, "indexCount");
 				GLCALL(glUniform1ui)(indexCountLocation, simplifiedModel.indexCount);
 				
-				GLCALL(glDispatchCompute)((shadowModel.indexCount / 3 + 127) / 128, 1, 1);
-				
+				indexCount = simplifiedModel.indexCount;       //pro CPU
+				if (!CPU){
+					GLCALL(glDispatchCompute)((shadowModel.indexCount / 3 + 127) / 128, 1, 1);
+				}
 				GLCALL(glUseProgram)(0);
 				GLCALL(glMemoryBarrier)(GL_ALL_BARRIER_BITS);
-				
+
 				for (unsigned i = 0; i < 4; i++)
 					GLCALL(glBindBufferBase)(GL_SHADER_STORAGE_BUFFER, i, 0);
 				
-				
-				// debug vypisy
-				GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, shadowVolumeComputationInfo);
-				shadowVolumeInfo = *reinterpret_cast<ShadowVolumeComputationInfo*>(GLCALL(glMapBuffer)(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY));
-				GLCALL(glUnmapBuffer)(GL_SHADER_STORAGE_BUFFER);
-				GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, 0);
+				if (!CPU){
+					// debug vypisy
+					GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, shadowVolumeComputationInfo);
+					shadowVolumeInfo = *reinterpret_cast<ShadowVolumeComputationInfo*>(GLCALL(glMapBuffer)(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY));
+					GLCALL(glUnmapBuffer)(GL_SHADER_STORAGE_BUFFER);
+					GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, 0);
+				}
+
+				////
+				if (CPU){
+					//outVertices.clear();
+					compute();
+					glBufferData(GL_ARRAY_BUFFER, outVertices.size() * sizeof(OutVertex), outVertices.data(), GL_DYNAMIC_DRAW);
+				}
 				
 				/*GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, shadowVolumeBuffer);
 				auto verts = reinterpret_cast<ShadowVolumeVertex*>(GLCALL(glMapBuffer)(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY));
@@ -425,11 +642,7 @@ int main(int argc, char** argv)
 				GLCALL(glUseProgram)(0);
 			}
 			
-			//draw scene -> fill depth buffer, (color buffer with ambient values?, and blend it with rest..) - simple shaders
-			//now somehow use buffer data generated by compute shader as input   ????? - side caps
-			//no culling - front and back is already inside multiplicity parameter
-			//draw it and fill stencilTexture at index xy (gl_FragCoord.xy) with multiplicity of that fragment. (which is also input from CS)
-			
+					
 			//this bit should clear stencil texture between runs
 			GLint clearColor[] = { 0 };
 			glBindTexture(GL_TEXTURE_2D, stencilTextureID);
