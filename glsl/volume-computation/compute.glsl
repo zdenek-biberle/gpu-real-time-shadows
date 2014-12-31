@@ -24,9 +24,12 @@ struct OutVertex
 	uint padding1;
 };
 
-struct SimpleVertex
+struct EdgeLookupNode
 {
-	vec4 position;
+	uint idx0;
+	uint idx1;
+	uint idx2;
+	uint triangleIdx;
 };
 
 layout (std430, binding = 0) readonly buffer InVertices
@@ -49,14 +52,9 @@ layout (std430, binding = 3) writeonly buffer OutInfo
 	uint outTriCount;
 };
 
-layout (std430, binding = 4) buffer VertexSortBuffer
+layout (std430, binding = 4) readonly buffer EdgeLookupBuffer
 {
-	SimpleVertex sortBuffer[];
-};
-
-layout (std430, binding = 5) buffer IdxRemapBuffer
-{
-	uint idxRemapBuffer[];
+	EdgeLookupNode edgeLookup[];
 };
 
 vec3 position(InVertex vert)
@@ -106,6 +104,57 @@ bool isInFront(vec3 point, vec3 a, vec3 b, vec3 c)
 	return dot(pointvec, normal) > 0.0;
 }
 
+int edgeLookupNodeCompare(EdgeLookupNode node, uint edge0, uint edge1)
+{
+	if (node.idx0 < edge0) return -1;
+	else if (node.idx0 > edge0) return 1;
+	else if (node.idx1 < edge1) return -1;
+	else if (node.idx1 > edge1) return 1;
+	else return 0;
+}
+
+bool hasEdge(EdgeLookupNode node, uint edge0, uint edge1)
+{
+	return (node.idx0 == edge0 && node.idx1 == edge1)
+		|| (node.idx0 == edge1 && node.idx1 == edge0);
+}
+
+// vrati id prvniho prvku v poli edgeLookup, ktery je na stejne hrane
+uint doEdgeLookup(uint edge0, uint edge1)
+{
+	if (edge0 < edge1)
+	{
+		uint tmp = edge0;
+		edge0 = edge1;
+		edge1 = tmp;
+	}
+	
+	uint loIdx = 0;
+	uint hiIdx = indexCount;
+	uint midIdx;
+	EdgeLookupNode node;
+	
+	// binarne vyhledame shodny prvek
+	while(true)
+	{
+		midIdx = (loIdx + hiIdx) / 2;
+		node = edgeLookup[midIdx];
+		int comparison = edgeLookupNodeCompare(node, edge0, edge1);
+		if (comparison == -1) loIdx = midIdx;
+		else if (comparison == 1) hiIdx = midIdx;
+		else break;
+	}
+	
+	// postupne se posuneme na nejnizsi shodny prvek
+	while (node.idx0 == edge0 && node.idx1 == edge1)
+	{
+		midIdx--;
+		node = edgeLookup[midIdx];
+	}
+	
+	return midIdx + 1;
+}
+
 void main()
 {
 	uint triangleId = gl_GlobalInvocationID.x;
@@ -126,76 +175,48 @@ void main()
 		if (isFrontFacing(a0, a1, a2))
 		{
 			uint triIdx = reserveTriangles(2);
-			emitTriangle(triIdx, a0, a1, a2, -2, 1);
-			emitTriangle(triIdx + 1, a0 + extrusionVec, a2 + extrusionVec, a1 + extrusionVec, -2, 1);	
+			emitTriangle(triIdx, a0, a1, a2, -2, indexCount);
+			emitTriangle(triIdx + 1, a0 + extrusionVec, a2 + extrusionVec, a1 + extrusionVec, -2, indexCount);	
 		}
 		
 		uint edgeIndices[] = {aidx[0], aidx[1], aidx[1], aidx[2], aidx[2], aidx[0]};
-		int edgeMultiplicity[] = {0, 0, 0};
-		bool ignoredEdge[] = {false, false, false};
-		
-		for (uint idxIdx = 0; idxIdx < indexCount; idxIdx += 3)
-		{
-			for (uint edgeIdx = 0; edgeIdx < 3; edgeIdx++)
-			{
-				if (!ignoredEdge[edgeIdx])
-				{
-					uint thisEdge[2];
-					thisEdge[0] = edgeIndices[edgeIdx * 2];
-					thisEdge[1] = edgeIndices[edgeIdx * 2 + 1];
-					
-					uint bidx[3];
-					bidx[0] = inIndices[idxIdx + indexOffset];
-					bidx[1] = inIndices[idxIdx + 1 + indexOffset];
-					bidx[2] = inIndices[idxIdx + 2 + indexOffset];
-				
-					uint matchingVertices = 0;
-					uint thirdVertIdx = 0;
-					for (uint otherVertIdx = 0; otherVertIdx < 3; otherVertIdx++)
-					{
-						if (thisEdge[0] == bidx[otherVertIdx]
-							|| thisEdge[1] == bidx[otherVertIdx])
-						{
-							matchingVertices++;
-						}
-						else
-						{
-							// nenasli jsme rovnocenny vertex v trojuhelniku,
-							// takze bud tento trojuhelnik nesdili tuto hranu
-							// a nebo sdili a tento vertex je treti nesdileny
-							thirdVertIdx = bidx[otherVertIdx];
-						}
-					}
-					
-					if (matchingVertices == 2)
-					{
-						// kazdou hranu zpracovava trojuhelnik s nejnizsim indexem
-						if (idxIdx < triangleId * 3)
-						{
-							ignoredEdge[edgeIdx] = true;
-							break;
-						}
-						
-						vec3 edge0 = position(inVertices[thisEdge[0]]);
-						vec3 edge1 = position(inVertices[thisEdge[1]]);
-						vec3 thirdVert = position(inVertices[thirdVertIdx]);
-					
-						edgeMultiplicity[edgeIdx] += isInFront(thirdVert, edge0, edge1, edge1 + lightDir) ? -1 : 1;
-					}
-				}
-			}
-		}
 		
 		for (uint edgeIdx = 0; edgeIdx < 3; edgeIdx++)
 		{
-			if (!ignoredEdge[edgeIdx] && edgeMultiplicity[edgeIdx] != 0)
+			uint thisEdge[2];
+			thisEdge[0] = edgeIndices[edgeIdx * 2];
+			thisEdge[1] = edgeIndices[edgeIdx * 2 + 1];
+			int edgeMultiplicity = 0;
+			bool ignore = false;
+			uint edgeNode;
+			for (edgeNode = doEdgeLookup(thisEdge[0], thisEdge[1]);
+				hasEdge(edgeLookup[edgeNode], thisEdge[0], thisEdge[1]);
+				edgeNode++)
+			{
+				EdgeLookupNode node = edgeLookup[edgeNode];
+				//EdgeLookupNode node = edgeLookup[doEdgeLookup(thisEdge[0], thisEdge[1])];
+				// kazdou hranu zpracovava trojuhelnik s nejnizsim indexem
+				if (node.triangleIdx < triangleId)
+				{
+					ignore = true;
+					break;
+				}
+				
+				vec3 edge0 = position(inVertices[thisEdge[0]]);
+				vec3 edge1 = position(inVertices[thisEdge[1]]);
+				vec3 thirdVert = position(inVertices[node.idx2]);
+			
+				edgeMultiplicity += isInFront(thirdVert, edge0, edge1, edge1 + lightDir) ? -1 : 1;
+			}
+			
+			if (!ignore && edgeMultiplicity != 0)
 			{
 				vec3 edge0 = position(inVertices[edgeIndices[edgeIdx * 2]]);
 				vec3 edge1 = position(inVertices[edgeIndices[edgeIdx * 2 + 1]]);
 				
 				uint triIdx = reserveTriangles(2);
-				emitTriangle(triIdx, edge0, edge1, edge0 + extrusionVec, edgeMultiplicity[edgeIdx], 0);
-				emitTriangle(triIdx + 1, edge1, edge1 + extrusionVec, edge0 + extrusionVec, edgeMultiplicity[edgeIdx], 0);
+				emitTriangle(triIdx, edge0, edge1, edge0 + extrusionVec, edgeMultiplicity, 0);
+				emitTriangle(triIdx + 1, edge1, edge1 + extrusionVec, edge0 + extrusionVec, edgeMultiplicity, 0);
 			}
 		}
 	}

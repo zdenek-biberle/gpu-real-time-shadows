@@ -34,6 +34,7 @@
 #include "shaderLoader.h"
 #include "Shader.h"
 #include "simplifyModel.h"
+#include "edgeLookup.h"
 
 struct ShadowVolumeComputationInfo
 {
@@ -61,7 +62,7 @@ int main(int argc, char** argv)
 		SDL_WINDOWPOS_UNDEFINED,
 		SDL_WINDOWPOS_UNDEFINED,
 		windowWidth, windowHeight,
-		SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL/* | SDL_WINDOW_RESIZABLE*/);  //dont know how to resize framebuffer texture right now..
+		SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
 
 	//SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
 	//SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
@@ -71,7 +72,6 @@ int main(int argc, char** argv)
 	
 	auto glCtx = SDL_GL_CreateContext(window);
 	
-	//glewExperimental = GL_TRUE;
 	GLenum err = glewInit();
 	if (GLEW_OK != err)
 	{
@@ -107,8 +107,18 @@ int main(int argc, char** argv)
 	std::vector<SimpleVertex> simplifiedVertices;
 	std::vector<GLuint> simplifiedIndices;
 	auto simplifiedModel = simplifyModel(shadowModel, vertices, indices, simplifiedVertices, simplifiedIndices);
-
-	std::vector<decltype(environmentModel)> scene = { environmentModel, shadowModel };
+	
+	std::cout << "Generujeme buffer pro vyhledávání hran" << std::endl;
+	
+	std::vector<EdgeLookupNode> edgeLookup;
+	generateEdgeLookup(simplifiedModel, simplifiedIndices, edgeLookup);
+	
+	std::vector<decltype(environmentModel)*> scene = { &environmentModel, &shadowModel };
+	
+	for (EdgeLookupNode& node : edgeLookup)
+	{
+		std::cout << node.idx0 << ", " << node.idx1 << ", " << node.idx2 << ", " << node.triangleIdx << std::endl;
+	}
 
 	std::cout << "Vytváříme buffery" << std::endl;
 
@@ -159,9 +169,10 @@ int main(int argc, char** argv)
 		}
 	}
 	
-	glGenTextures(1, &stencilTextureID);
-	glBindTexture(GL_TEXTURE_2D, stencilTextureID);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_R32I, windowWidth, windowHeight, 0, GL_RED_INTEGER, GL_INT, nullptr);
+	GLCALL(glGenTextures)(1, &stencilTextureID);
+	GLCALL(glBindTexture)(GL_TEXTURE_2D, stencilTextureID);
+	GLCALL(glTexImage2D)(GL_TEXTURE_2D, 0, GL_R32I, windowWidth, windowHeight, 0, GL_RED_INTEGER, GL_INT, nullptr);
+	GLCALL(glBindTexture)(GL_TEXTURE_2D, 0);
 
 	/*glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -177,31 +188,26 @@ int main(int argc, char** argv)
 	GLuint shadowVolumeBuffer;
 	GLuint shadowVolumeComputationInfo;
 
-		glGenBuffers(1, &vbo);
-		GLCALL(glGenBuffers)(1, &ibo);
-		GLCALL(glGenBuffers)(1, &shadowVolumeBuffer);
-		GLCALL(glGenBuffers)(1, &shadowVolumeComputationInfo);
+	glGenBuffers(1, &vbo);
+	GLCALL(glGenBuffers)(1, &ibo);
+	GLCALL(glGenBuffers)(1, &shadowVolumeBuffer);
+	GLCALL(glGenBuffers)(1, &shadowVolumeComputationInfo);
 
-		GLCALL(glBindBuffer)(GL_ARRAY_BUFFER, vbo);
-		GLCALL(glBufferData)(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_STATIC_DRAW);
+	GLCALL(glBindBuffer)(GL_ARRAY_BUFFER, vbo);
+	GLCALL(glBufferData)(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_STATIC_DRAW);
 
-		GLCALL(glBindBuffer)(GL_ELEMENT_ARRAY_BUFFER, ibo);
-		GLCALL(glBufferData)(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), indices.data(), GL_STATIC_DRAW);
+	GLCALL(glBindBuffer)(GL_ELEMENT_ARRAY_BUFFER, ibo);
+	GLCALL(glBufferData)(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), indices.data(), GL_STATIC_DRAW);
 
-		GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, shadowVolumeBuffer);
-		// *7, protože pro každý trojúhelník můžeme potenciálně vygenerovat až 7 dalších trojúhelníků
-		GLCALL(glBufferData)(GL_SHADER_STORAGE_BUFFER, shadowModel.indexCount * sizeof(ShadowVolumeVertex) * 7, nullptr, GL_DYNAMIC_COPY);
-
-		GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, shadowVolumeComputationInfo);
-
-		GLCALL(glBindBuffer)(GL_ARRAY_BUFFER, 0);
-		GLCALL(glBindBuffer)(GL_ELEMENT_ARRAY_BUFFER, 0);
-		GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, 0);
+	GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, shadowVolumeBuffer);
+	// *7, protože pro každý trojúhelník můžeme potenciálně vygenerovat až 7 dalších trojúhelníků
+	GLCALL(glBufferData)(GL_SHADER_STORAGE_BUFFER, shadowModel.indexCount * sizeof(ShadowVolumeVertex) * 7, nullptr, GL_DYNAMIC_COPY);
 
 	std::cout << "Generujeme pomocné buffery pro výpočet shadow volume" << std::endl;
 	
 	GLuint simpleVbo;
 	GLuint simpleIbo;
+	GLuint edgeLookupBuffer;
 	
 	GLCALL(glGenBuffers)(1, &simpleVbo);
 	GLCALL(glBindBuffer)(GL_ARRAY_BUFFER, simpleVbo);
@@ -210,6 +216,14 @@ int main(int argc, char** argv)
 	GLCALL(glGenBuffers)(1, &simpleIbo);
 	GLCALL(glBindBuffer)(GL_ELEMENT_ARRAY_BUFFER, simpleIbo);
 	GLCALL(glBufferData)(GL_ELEMENT_ARRAY_BUFFER, simplifiedIndices.size() * sizeof(GLuint), simplifiedIndices.data(), GL_STATIC_DRAW);
+
+	GLCALL(glGenBuffers)(1, &edgeLookupBuffer);
+	GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, edgeLookupBuffer);
+	GLCALL(glBufferData)(GL_SHADER_STORAGE_BUFFER, edgeLookup.size() * sizeof(EdgeLookupNode), edgeLookup.data(), GL_STATIC_DRAW);
+
+	GLCALL(glBindBuffer)(GL_ARRAY_BUFFER, 0);
+	GLCALL(glBindBuffer)(GL_ELEMENT_ARRAY_BUFFER, 0);
+	GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, 0);
 
 	std::cout << "Vstupujeme do hlavní smyčky" << std::endl;
 	
@@ -249,6 +263,9 @@ int main(int argc, char** argv)
 							windowWidth = event.window.data1;
 							windowHeight = event.window.data2;
 							GLCALL(glViewport)(0, 0, windowWidth, windowHeight);
+							GLCALL(glBindTexture)(GL_TEXTURE_2D, stencilTextureID);
+							GLCALL(glTexImage2D)(GL_TEXTURE_2D, 0, GL_R32I, windowWidth, windowHeight, 0, GL_RED_INTEGER, GL_INT, nullptr);
+							GLCALL(glBindTexture)(GL_TEXTURE_2D, 0);
 							break;
 						default:
 							break;
@@ -303,13 +320,16 @@ int main(int argc, char** argv)
 				),
 				roty, glm::vec3(0.0f, 1.0f, 0.0f)
 			);
-			auto model = glm::rotate(
-				glm::mat4(1.0f),
-				modelRoty, glm::vec3(0.0f, 1.0f, 0.0f)
-			);
+			shadowModel.transform = 
+				glm::rotate(
+					glm::mat4(1.0f),
+					modelRoty, glm::vec3(0.0f, 1.0f, 0.0f));
+					
+			environmentModel.transform = 
+				glm::rotate(
+					glm::mat4(1.0f),
+					modelRoty * 0.25f, glm::vec3(0.0f, 1.0f, 0.0f));
 			
-			auto mvMat = view * model;
-			auto mvNormMat = glm::transpose(glm::inverse(glm::mat3(mvMat)));
 			auto pMat = projection;
 		
 			// loadneme shadery, pokud je to treba
@@ -318,7 +338,6 @@ int main(int argc, char** argv)
 				std::cout << "Nahráváme shadery" << std::endl;
 				loadShaders = false;
 				
-								
 				if (volumeComputationProgram != 0)
 				{
 					GLCALL(glDeleteProgram)(volumeComputationProgram);
@@ -377,8 +396,8 @@ int main(int argc, char** argv)
 				GLCALL(glMemoryBarrier)(GL_ALL_BARRIER_BITS);
 				
 				GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, shadowVolumeComputationInfo);
-				GLCALL(glBufferData)(GL_SHADER_STORAGE_BUFFER, sizeof(ShadowVolumeComputationInfo), nullptr, GL_DYNAMIC_READ);
-				GLCALL(glBufferData)(GL_SHADER_STORAGE_BUFFER, sizeof(ShadowVolumeComputationInfo), &shadowVolumeInfo, GL_DYNAMIC_READ);
+				GLCALL(glBufferData)(GL_SHADER_STORAGE_BUFFER, sizeof(ShadowVolumeComputationInfo), nullptr, GL_STREAM_READ);
+				GLCALL(glBufferData)(GL_SHADER_STORAGE_BUFFER, sizeof(ShadowVolumeComputationInfo), &shadowVolumeInfo, GL_STREAM_READ);
 				GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, 0);
 				
 				auto lightDirLocation = glGetUniformLocation(volumeComputationProgram, "lightDir");
@@ -386,7 +405,7 @@ int main(int argc, char** argv)
 				if (lightDirLocation != -1)
 				{
 					auto lightDir = glm::normalize(glm::vec3(-1.0f, -1.0f, -1.0f));
-					lightDir = glm::mat3(glm::inverse(model)) * lightDir;
+					lightDir = glm::mat3(glm::inverse(shadowModel.transform)) * lightDir;
 					glUniform3fv(lightDirLocation, 1, glm::value_ptr(lightDir));
 				}
 				
@@ -394,6 +413,7 @@ int main(int argc, char** argv)
 				GLCALL(glBindBufferBase)(GL_SHADER_STORAGE_BUFFER, 1, simpleIbo);
 				GLCALL(glBindBufferBase)(GL_SHADER_STORAGE_BUFFER, 2, shadowVolumeBuffer);
 				GLCALL(glBindBufferBase)(GL_SHADER_STORAGE_BUFFER, 3, shadowVolumeComputationInfo);
+				GLCALL(glBindBufferBase)(GL_SHADER_STORAGE_BUFFER, 4, edgeLookupBuffer);
 				
 				auto indexOffsetLocation = GLCALL(glGetUniformLocation)(volumeComputationProgram, "indexOffset");
 				GLCALL(glUniform1ui)(indexOffsetLocation, simplifiedModel.baseIndex);
@@ -402,27 +422,17 @@ int main(int argc, char** argv)
 				GLCALL(glUniform1ui)(indexCountLocation, simplifiedModel.indexCount);
 				
 				GLCALL(glDispatchCompute)((shadowModel.indexCount / 3 + 127) / 128, 1, 1);
-				
 				GLCALL(glUseProgram)(0);
 				GLCALL(glMemoryBarrier)(GL_ALL_BARRIER_BITS);
 				
 				for (unsigned i = 0; i < 4; i++)
 					GLCALL(glBindBufferBase)(GL_SHADER_STORAGE_BUFFER, i, 0);
 				
-				
 				// debug vypisy
 				GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, shadowVolumeComputationInfo);
 				shadowVolumeInfo = *reinterpret_cast<ShadowVolumeComputationInfo*>(GLCALL(glMapBuffer)(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY));
 				GLCALL(glUnmapBuffer)(GL_SHADER_STORAGE_BUFFER);
 				GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, 0);
-				
-				/*GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, shadowVolumeBuffer);
-				auto verts = reinterpret_cast<ShadowVolumeVertex*>(GLCALL(glMapBuffer)(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY));
-				for (unsigned i = 0; i < shadowVolumeInfo.triCount  * 3; i++)
-					std::cout << verts[i].x << ", " << verts[i].y << ", " << verts[i].z << ": " << verts[i].multiplicity << ", " << verts[i].isCap << std::endl;
-				GLCALL(glUnmapBuffer)(GL_SHADER_STORAGE_BUFFER);
-				GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, 0);*/
-				GLCALL(glUseProgram)(0);
 			}
 			
 			//draw scene -> fill depth buffer, (color buffer with ambient values?, and blend it with rest..) - simple shaders
@@ -435,13 +445,9 @@ int main(int argc, char** argv)
 			glBindTexture(GL_TEXTURE_2D, stencilTextureID);
 			glClearTexImage(stencilTextureID, 0, GL_RED_INTEGER, GL_INT, nullptr);	//
 			glBindTexture(GL_TEXTURE_2D, 0);
-			
-			/*
-			std::vector<GLubyte> emptyData(windowWidth * windowHeight * 4, 0);
-			glBindTexture(GL_TEXTURE_2D, stencilTextureID);
-			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, windowWidth, windowHeight, GL_RED_INTEGER, GL_INT, &emptyData[0]);
-			*/
+
 			///////////////////////////////////////////////////////////////////////////////////////////////////////
+
 			simpleProgram.useProgram();
 		
 			GLCALL(glDisable)(GL_BLEND);
@@ -455,9 +461,6 @@ int main(int argc, char** argv)
 			auto mvLocation = glGetUniformLocation(simpleProgram.id, "mvMat");
 			auto pLocation = glGetUniformLocation(simpleProgram.id, "pMat");
 
-			glUniformMatrix4fv(mvLocation, 1, GL_FALSE, glm::value_ptr(mvMat));
-			glUniformMatrix4fv(pLocation, 1, GL_FALSE, glm::value_ptr(pMat));
-
 			glBindBuffer(GL_ARRAY_BUFFER, vbo);
 			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
 
@@ -470,7 +473,11 @@ int main(int argc, char** argv)
 			glVertexAttribPointer(0u, 3, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, _x)));
 	
 			for (auto modelInfo : scene) {
-				glDrawElements(GL_TRIANGLES, (GLsizei)modelInfo.indexCount, GL_UNSIGNED_INT, reinterpret_cast<void*>(modelInfo.baseIndex * sizeof(GLuint)));
+				auto mvMat = view * modelInfo->transform;
+				auto mvNormMat = glm::transpose(glm::inverse(glm::mat3(mvMat)));
+				glUniformMatrix4fv(mvLocation, 1, GL_FALSE, glm::value_ptr(mvMat));
+				glUniformMatrix4fv(pLocation, 1, GL_FALSE, glm::value_ptr(pMat));
+				glDrawElements(GL_TRIANGLES, (GLsizei)modelInfo->indexCount, GL_UNSIGNED_INT, reinterpret_cast<void*>(modelInfo->baseIndex * sizeof(GLuint)));
 			}
 
 			for (int i = 0; i < numArrays; i++)
@@ -491,14 +498,12 @@ int main(int argc, char** argv)
 
 			glBindBuffer(GL_ARRAY_BUFFER, shadowVolumeBuffer); //bind output of compute shader as array buffer
 			
-			GLuint imageLoc = glGetUniformLocation(stencilProgram.id, "stencilTexture");
 			glBindImageTexture(0, stencilTextureID, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32I);
-			//std::cout << "stencil program stenctil texture " << imageLoc << std::endl;
 
 			mvLocation = glGetUniformLocation(stencilProgram.id, "mvMat");
 			pLocation = glGetUniformLocation(stencilProgram.id, "pMat");
 
-			glUniformMatrix4fv(mvLocation, 1, GL_FALSE, glm::value_ptr(mvMat));
+			glUniformMatrix4fv(mvLocation, 1, GL_FALSE, glm::value_ptr(view * shadowModel.transform));
 			glUniformMatrix4fv(pLocation, 1, GL_FALSE, glm::value_ptr(pMat));
 
 			numArrays = 2;
@@ -517,7 +522,6 @@ int main(int argc, char** argv)
 				glDisableVertexAttribArray(i);
 
 			glBindBuffer(GL_ARRAY_BUFFER, 0);
-			//glBindImageTexture(0, 0, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32I);
 			glUseProgram(0);
 
 			///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -528,7 +532,6 @@ int main(int argc, char** argv)
 			glDepthFunc(GL_LESS);
 			glClear(GL_DEPTH_BUFFER_BIT); 
 			glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-			//GLCALL(glColorMask)(GL_FALSE, GL_TRUE, GL_FALSE, GL_TRUE);
 
 			//draw scene with lighting
 
@@ -537,11 +540,8 @@ int main(int argc, char** argv)
 			auto mvNormLocation = glGetUniformLocation(lightingProgram.id, "mvNormMat");
 			pLocation = glGetUniformLocation(lightingProgram.id, "pMat");
 
-			imageLoc = glGetUniformLocation(lightingProgram.id, "stencilTexture");
 			glBindImageTexture(0, stencilTextureID, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32I);
 
-			glUniformMatrix4fv(mvLocation, 1, GL_FALSE, glm::value_ptr(mvMat));
-			glUniformMatrix3fv(mvNormLocation, 1, GL_FALSE, glm::value_ptr(mvNormMat));
 			glUniformMatrix4fv(pLocation, 1, GL_FALSE, glm::value_ptr(pMat));
 
 			auto lightDirLocation = glGetUniformLocation(lightingProgram.id, "lightDir");
@@ -567,7 +567,11 @@ int main(int argc, char** argv)
 			glVertexAttribPointer(1u, 3, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, _nx)));
 
 			for (auto modelInfo : scene) {
-				glDrawElements(GL_TRIANGLES, (GLsizei)modelInfo.indexCount, GL_UNSIGNED_INT, reinterpret_cast<void*>(modelInfo.baseIndex * sizeof(GLuint)));
+				auto mvMat = view * modelInfo->transform;
+				auto mvNormMat = glm::transpose(glm::inverse(glm::mat3(mvMat)));
+				glUniformMatrix4fv(mvLocation, 1, GL_FALSE, glm::value_ptr(mvMat));
+				glUniformMatrix3fv(mvNormLocation, 1, GL_FALSE, glm::value_ptr(mvNormMat));
+				glDrawElements(GL_TRIANGLES, (GLsizei)modelInfo->indexCount, GL_UNSIGNED_INT, reinterpret_cast<void*>(modelInfo->baseIndex * sizeof(GLuint)));
 			}
 
 			for (int i = 0; i < numArrays; i++)
@@ -576,6 +580,8 @@ int main(int argc, char** argv)
 			GLCALL(glBindBuffer)(GL_ARRAY_BUFFER, 0);
 			GLCALL(glBindBuffer)(GL_ELEMENT_ARRAY_BUFFER, 0);	
 			GLCALL(glUseProgram)(0);
+	
+			
 	
 			if (volumeVisualizationProgram != 0 && drawShadowVolume)
 			{
@@ -587,6 +593,9 @@ int main(int argc, char** argv)
 				auto mvLocation = GLCALL(glGetUniformLocation)(volumeVisualizationProgram, "mvMat");
 				auto mvNormLocation = GLCALL(glGetUniformLocation)(volumeVisualizationProgram, "mvNormMat");
 				auto pLocation = GLCALL(glGetUniformLocation)(volumeVisualizationProgram, "pMat");
+				
+				auto mvMat = view * shadowModel.transform;
+				auto mvNormMat = glm::transpose(glm::inverse(glm::mat3(mvMat)));
 				
 				GLCALL(glUniformMatrix4fv)(mvLocation, 1, GL_FALSE, glm::value_ptr(mvMat));
 				GLCALL(glUniformMatrix3fv)(mvNormLocation, 1, GL_FALSE, glm::value_ptr(mvNormMat));

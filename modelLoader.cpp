@@ -3,24 +3,27 @@
 #include <cassert>
 #include <stdexcept>
 #include <sstream>
-/*
-#include <assimp/Importer.hpp>
-#include <assimp/scene.h>
-#include <assimp/postprocess.h> 
-*/
-#include <glm/glm.hpp>
-/*
-std::ostream& operator<<(std::ostream& stream, const aiVector3D& vec)
-{
-	stream << "(" << vec.x << ", " << vec.y << ", " << vec.z << ")";
-	return stream;
-}
 
-glm::vec3 aiToGlm(const aiVector3D& vector)
-{
-	return glm::vec3(vector.x, vector.y, vector.z);
-}
-*/
+#include <glm/glm.hpp>
+
+ModelInfo::ModelInfo():
+	baseIndex(0u),
+	indexCount(0u),
+	transform(glm::mat4(1.0f))
+{}
+
+ModelInfo::ModelInfo(unsigned int baseIndex, unsigned int indexCount):
+	baseIndex(baseIndex),
+	indexCount(indexCount),
+	transform(glm::mat4(1.0f))
+{}
+
+ModelInfo::ModelInfo(unsigned int baseIndex, unsigned int indexCount, const glm::mat4& transform):
+	baseIndex(baseIndex),
+	indexCount(indexCount),
+	transform(transform)
+{}
+
 Vertex::Vertex(
 	float x, float y, float z, 
 	float nx, float ny, float nz,

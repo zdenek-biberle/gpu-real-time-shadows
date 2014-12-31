@@ -12,8 +12,13 @@
 
 struct ModelInfo
 {
+	ModelInfo();
+	ModelInfo(unsigned int baseIndex, unsigned int indexCount);
+	ModelInfo(unsigned int baseIndex, unsigned int indexCount, const glm::mat4& transform);
+	
 	unsigned int baseIndex;
 	unsigned int indexCount;
+	glm::mat4 transform;
 };
 
 struct Vertex

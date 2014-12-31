@@ -4,7 +4,7 @@ PROGRAM = gpu-real-time-shadows
 
 default: $(PROGRAM)
 
-$(PROGRAM): main.o glUtil.o modelLoader.o readFile.o shaderLoader.o Shader.o simplifyModel.o
+$(PROGRAM): main.o glUtil.o modelLoader.o readFile.o shaderLoader.o Shader.o simplifyModel.o edgeLookup.o
 	$(CXX) -g $(CXXFLAGS) $^ -o $@ $(LDLIBS)
 
 clean:
