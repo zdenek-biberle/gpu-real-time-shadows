@@ -67,6 +67,7 @@ struct OutVertex
 	uint padding1;
 };
 
+std::vector<EdgeLookupNode> edgeLookup;
 
 	//vec4 position;
 	std::vector<InVertex> inVertices;
@@ -127,6 +128,58 @@ bool isInFront(vec3 point, vec3 a, vec3 b, vec3 c)
 	vec3 pointvec = normalize(point - a);
 	return dot(pointvec, normal) > 0.0;
 }
+int edgeLookupNodeCompare(EdgeLookupNode node, uint edge0, uint edge1)
+{
+	if (node.idx0 < edge0) return -1;
+	else if (node.idx0 > edge0) return 1;
+	else if (node.idx1 < edge1) return -1;
+	else if (node.idx1 > edge1) return 1;
+	else return 0;
+}
+
+bool hasEdge(EdgeLookupNode node, uint edge0, uint edge1)
+{
+	return (node.idx0 == edge0 && node.idx1 == edge1)
+		|| (node.idx0 == edge1 && node.idx1 == edge0);
+}
+
+// vrati id prvniho prvku v poli edgeLookup, ktery je na stejne hrane
+uint doEdgeLookup(uint edge0, uint edge1)
+{
+	if (edge0 < edge1)
+	{
+		uint tmp = edge0;
+		edge0 = edge1;
+		edge1 = tmp;
+	}
+
+	uint loIdx = 0;
+	uint hiIdx = indexCount;
+	uint midIdx;
+	EdgeLookupNode node;
+
+	// binarne vyhledame shodny prvek
+	while (true)
+	{
+		midIdx = ((float)loIdx + (float)hiIdx) / 2.0f;
+		node = edgeLookup[midIdx];
+		int comparison = edgeLookupNodeCompare(node, edge0, edge1);
+		if (comparison == -1) loIdx = midIdx;
+		else if (comparison == 1) hiIdx = midIdx;
+		else break;
+	}
+
+	// postupne se posuneme na nejnizsi shodny prvek
+	while (node.idx0 == edge0 && node.idx1 == edge1)
+	{
+		if (midIdx == 0)
+			return 0;
+		midIdx--;
+		node = edgeLookup[midIdx];
+	}
+
+	return midIdx + 1;
+}
 
 void compute()
 {
@@ -152,76 +205,48 @@ void compute()
 			if (isFrontFacing(a0, a1, a2))
 			{
 				uint triIdx = reserveTriangles(2);
-				emitTriangle(triIdx, a0, a1, a2, -2, 1);
-				emitTriangle(triIdx + 1, a0 + extrusionVec, a2 + extrusionVec, a1 + extrusionVec, -2, 1);
+				emitTriangle(triIdx, a0, a1, a2, -2, indexCount);
+				emitTriangle(triIdx + 1, a0 + extrusionVec, a2 + extrusionVec, a1 + extrusionVec, -2, indexCount);
 			}
 
 			uint edgeIndices[] = { aidx[0], aidx[1], aidx[1], aidx[2], aidx[2], aidx[0] };
-			int edgeMultiplicity[] = { 0, 0, 0 };
-			bool ignoredEdge[] = { false, false, false };
-
-			for (uint idxIdx = 0; idxIdx < indexCount; idxIdx += 3)
-			{
-				for (uint edgeIdx = 0; edgeIdx < 3; edgeIdx++)
-				{
-					if (!ignoredEdge[edgeIdx])
-					{
-						uint thisEdge[2];
-						thisEdge[0] = edgeIndices[edgeIdx * 2];
-						thisEdge[1] = edgeIndices[edgeIdx * 2 + 1];
-
-						uint bidx[3];
-						bidx[0] = inIndices[idxIdx + indexOffset];
-						bidx[1] = inIndices[idxIdx + 1 + indexOffset];
-						bidx[2] = inIndices[idxIdx + 2 + indexOffset];
-
-						uint matchingVertices = 0;
-						uint thirdVertIdx = 0;
-						for (uint otherVertIdx = 0; otherVertIdx < 3; otherVertIdx++)
-						{
-							if (thisEdge[0] == bidx[otherVertIdx]
-								|| thisEdge[1] == bidx[otherVertIdx])
-							{
-								matchingVertices++;
-							}
-							else
-							{
-								// nenasli jsme rovnocenny vertex v trojuhelniku,
-								// takze bud tento trojuhelnik nesdili tuto hranu
-								// a nebo sdili a tento vertex je treti nesdileny
-								thirdVertIdx = bidx[otherVertIdx];
-							}
-						}
-
-						if (matchingVertices == 2)
-						{
-							// kazdou hranu zpracovava trojuhelnik s nejnizsim indexem
-							if (idxIdx < triangleId * 3)
-							{
-								ignoredEdge[edgeIdx] = true;
-								break;
-							}
-
-							vec3 edge0 = position(inVertices[thisEdge[0]]);
-							vec3 edge1 = position(inVertices[thisEdge[1]]);
-							vec3 thirdVert = position(inVertices[thirdVertIdx]);
-
-							edgeMultiplicity[edgeIdx] += isInFront(thirdVert, edge0, edge1, edge1 + lightDir) ? -1 : 1;
-						}
-					}
-				}
-			}
 
 			for (uint edgeIdx = 0; edgeIdx < 3; edgeIdx++)
 			{
-				if (!ignoredEdge[edgeIdx] && edgeMultiplicity[edgeIdx] != 0)
+				uint thisEdge[2];
+				thisEdge[0] = edgeIndices[edgeIdx * 2];
+				thisEdge[1] = edgeIndices[edgeIdx * 2 + 1];
+				int edgeMultiplicity = 0;
+				bool ignore = false;
+				uint edgeNode;
+				for (edgeNode = doEdgeLookup(thisEdge[0], thisEdge[1]);
+					edgeNode < indexCount && hasEdge(edgeLookup[edgeNode], thisEdge[0], thisEdge[1]);
+					edgeNode++)
+				{
+					EdgeLookupNode node = edgeLookup[edgeNode];
+
+					// kazdou hranu zpracovava trojuhelnik s nejnizsim indexem
+					if (node.triangleIdx < triangleId)
+					{
+						ignore = true;
+						break;
+					}
+
+					vec3 edge0 = position(inVertices[thisEdge[0]]);
+					vec3 edge1 = position(inVertices[thisEdge[1]]);
+					vec3 thirdVert = position(inVertices[node.idx2]);
+
+					edgeMultiplicity += isInFront(thirdVert, edge0, edge1, edge1 + lightDir) ? -1 : 1;
+				}
+
+				if (!ignore && edgeMultiplicity != 0)
 				{
 					vec3 edge0 = position(inVertices[edgeIndices[edgeIdx * 2]]);
 					vec3 edge1 = position(inVertices[edgeIndices[edgeIdx * 2 + 1]]);
 
 					uint triIdx = reserveTriangles(2);
-					emitTriangle(triIdx, edge0, edge1, edge0 + extrusionVec, edgeMultiplicity[edgeIdx], 0);
-					emitTriangle(triIdx + 1, edge1, edge1 + extrusionVec, edge0 + extrusionVec, edgeMultiplicity[edgeIdx], 0);
+					emitTriangle(triIdx, edge0, edge1, edge0 + extrusionVec, edgeMultiplicity, 0);
+					emitTriangle(triIdx + 1, edge1, edge1 + extrusionVec, edge0 + extrusionVec, edgeMultiplicity, 0);
 				}
 			}
 		}
@@ -298,9 +323,8 @@ int main(int argc, char** argv)
 	
 	std::cout << "Generujeme buffer pro vyhledávání hran" << std::endl;
 	
-	std::vector<EdgeLookupNode> edgeLookup;
+	//std::vector<EdgeLookupNode> edgeLookup;
 	generateEdgeLookup(simplifiedModel, simplifiedIndices, edgeLookup);
-	
 	std::vector<decltype(environmentModel)*> scene = { &environmentModel, &shadowModel };
 	
 	std::cout << "Vytváříme buffery" << std::endl;
@@ -384,13 +408,12 @@ int main(int argc, char** argv)
 		GLCALL(glBindBuffer)(GL_ELEMENT_ARRAY_BUFFER, ibo);
 		GLCALL(glBufferData)(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), indices.data(), GL_STATIC_DRAW);
 		
-		inIndices = indices;  //CPU
+		
 
 		GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, shadowVolumeBuffer);
 		// *7, protože pro každý trojúhelník můžeme potenciálně vygenerovat až 7 dalších trojúhelníků
 		GLCALL(glBufferData)(GL_SHADER_STORAGE_BUFFER, shadowModel.indexCount * sizeof(ShadowVolumeVertex) * 7, nullptr, GL_DYNAMIC_COPY);
-		
-		outVertices.resize(indices.size() * 7);	// CPU
+
 
 	GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, shadowVolumeBuffer);
 	// *7, protože pro každý trojúhelník můžeme potenciálně vygenerovat až 7 dalších trojúhelníků
@@ -414,6 +437,9 @@ int main(int argc, char** argv)
 	GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, edgeLookupBuffer);
 	GLCALL(glBufferData)(GL_SHADER_STORAGE_BUFFER, edgeLookup.size() * sizeof(EdgeLookupNode), edgeLookup.data(), GL_STATIC_DRAW);
 
+	inIndices = simplifiedIndices;  //CPU
+	outVertices.resize(simplifiedIndices.size() * 7);	// CPU
+	//edgeLookup  je pouzite stejne..
 	GLCALL(glBindBuffer)(GL_ARRAY_BUFFER, 0);
 	GLCALL(glBindBuffer)(GL_ELEMENT_ARRAY_BUFFER, 0);
 	GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, 0);
