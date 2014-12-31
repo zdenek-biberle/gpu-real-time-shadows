@@ -13,5 +13,7 @@ out vec4 outColor;
 void main()
 {
 	float multiplicityVisual = (IN.multiplicity * 0.125) + 0.5;
-	outColor = (gl_FrontFacing ? vec4(0.5, multiplicityVisual, 0, 0.2) : vec4(multiplicityVisual, multiplicityVisual, multiplicityVisual, 0.2));
+	bool negativeMultiplicity = IN.multiplicity < 0;
+	bool side = gl_FrontFacing ? negativeMultiplicity : !negativeMultiplicity;
+	outColor = side ? vec4(0.8, 0.8, 0.8, 0.5) : vec4(0.8, 0.2, 0.2, 0.5);
 }

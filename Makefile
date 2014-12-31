@@ -1,5 +1,5 @@
 CXXFLAGS += --std=c++11 -DGLM_FORCE_RADIANS -g3
-LDLIBS += -lGLEW -lGL -lSDL2 -lassimp
+LDLIBS += -lGLEW -lGL -lSDL2
 PROGRAM = gpu-real-time-shadows
 
 default: $(PROGRAM)

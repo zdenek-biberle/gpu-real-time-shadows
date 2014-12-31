@@ -1,7 +1,7 @@
 #version 430
 
 uniform vec3 lightDir;
-layout(binding=0) uniform isampler2D stencilTexture;  
+layout(r32i, binding = 0) uniform iimage2D stencilTexture;
 
 in VertexOutput
 {
@@ -13,10 +13,26 @@ out vec4 outColor;
 
 void main()
 {
-	int number = texture(stencilTexture, gl_FragCoord.xy).r;	//here look into texture with shadowing info.. zeroes should be lighted
+	int number = imageLoad(stencilTexture, ivec2(gl_FragCoord.xy)).r;	//here look into texture with shadowing info.. zeroes should be lighted
 	vec3 ambient = vec3(0.3f);
 
-	if(number == 0){
+	if (number == 0)
+		outColor = vec4(1.0, 1.0, 1.0, 1.0);
+	else if (number == 1)
+		outColor = vec4(1.0, 1.0, 0.0, 1.0);
+	else if (number == -1)
+		outColor = vec4(1.0, 0.0, 1.0, 1.0);
+	else if (number == 2)
+		outColor = vec4(1.0, 0.0, 0.0, 1.0);
+	else if (number == -2)
+		outColor = vec4(0.0, 1.0, 1.0, 1.0);
+	else if (number == 3)
+		outColor = vec4(0.0, 1.0, 0.0, 1.0);
+	else if (number == -3)
+		outColor = vec4(0.0, 0.0, 1.0, 1.0);
+	else
+		outColor = vec4(0.5, 0.5, 0.5, 1.0);
+	/*if(number == 0){
 		vec3 normNormal = normalize(IN.normal);
 	
 		vec3 diffuse = vec3(max(0.0, dot(normNormal, -lightDir)));
@@ -49,7 +65,7 @@ void main()
 	} else { 
 		outColor.z = 1.0;
 		outColor.xyz = ambient;		
-	}
+	}*/
 }
 
 
