@@ -194,7 +194,7 @@ void main()
 				edgeNode++)
 			{
 				EdgeLookupNode node = edgeLookup[edgeNode];
-				//EdgeLookupNode node = edgeLookup[doEdgeLookup(thisEdge[0], thisEdge[1])];
+				
 				// kazdou hranu zpracovava trojuhelnik s nejnizsim indexem
 				if (node.triangleIdx < triangleId)
 				{

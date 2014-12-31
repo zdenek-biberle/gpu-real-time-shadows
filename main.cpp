@@ -429,7 +429,7 @@ int main(int argc, char** argv)
 	bool loadShaders = true;
 	
 	bool drawShadowVolume = false;
-	bool CPU = true;
+	bool CPU = false;
 	
 	auto ticks = SDL_GetTicks();
 	auto ticksDelta = 0;
