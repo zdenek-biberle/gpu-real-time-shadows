@@ -460,6 +460,12 @@ int main(int argc, char** argv)
 	auto ticks = SDL_GetTicks();
 	auto ticksDelta = 0;
 	
+	unsigned frameCounter = 0;
+	unsigned lastDisplayedFrameCounter = 0;
+	unsigned frameTickCounter = 0;
+	unsigned frameComputationTickCounter = 0;
+	
+	
 	ShadowVolumeComputationInfo shadowVolumeInfo;
 	GLuint volumeComputationProgram = 0;
 	GLuint volumeVisualizationProgram = 0;
@@ -524,14 +530,35 @@ int main(int argc, char** argv)
 			 }
 		}
 		
-		auto lastTicks = ticks;
-		ticks = SDL_GetTicks();
-		ticksDelta = ticks - lastTicks;
-		
-		modelRoty += rotate ? 0.0002 * (ticksDelta) : 0.0;
+		// Cas a pocitadla snimku a podobne veci //
+		{
+			auto lastTicks = ticks;
+			ticks = SDL_GetTicks();
+			ticksDelta = ticks - lastTicks;
+			modelRoty += rotate ? 0.0002 * (ticksDelta) : 0.0;
+			
+			frameCounter++;
+			frameTickCounter += ticksDelta;
+			
+			// jednou za deset vterin
+			if (frameTickCounter > 10000)
+			{
+				auto totalFrames = frameCounter - lastDisplayedFrameCounter;
+				auto totalSeconds = frameTickCounter * 0.001;
+				auto totalComputationSeconds = frameComputationTickCounter * 0.001;
+				
+				std::cout << "Vykresleno " << totalFrames << " snímků za " << totalSeconds << " s (tj. " << totalFrames / totalSeconds << " FPS)" << std::endl;
+				std::cout << "Průměrná doba vykreslování jendoho snímku: " << totalSeconds / totalFrames << " s" << std::endl;
+				std::cout << "Průměrná doba výpočtu stínového tělesa: " << totalComputationSeconds / totalFrames << " s" << std::endl;
+				
+				lastDisplayedFrameCounter = frameCounter;
+				frameTickCounter = 0;
+				frameComputationTickCounter = 0;
+			}
+		}
 		
 		try
-		{	
+		{
 			auto projection = glm::perspective(90.0f, float(windowWidth) / float(windowHeight), 0.1f, 100.0f );
 			auto view = glm::rotate(
 				glm::rotate(
@@ -610,6 +637,7 @@ int main(int argc, char** argv)
 			
 			if (volumeComputationProgram != 0)
 			{
+				unsigned computationStartTicks = SDL_GetTicks();
 				GLCALL(glUseProgram)(volumeComputationProgram);
 				
 				shadowVolumeInfo.triCount = 0;
@@ -684,6 +712,8 @@ int main(int argc, char** argv)
 				GLCALL(glUnmapBuffer)(GL_SHADER_STORAGE_BUFFER);
 				GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, 0);*/
 				GLCALL(glUseProgram)(0);
+				
+				frameComputationTickCounter += SDL_GetTicks() - computationStartTicks;
 			}
 			
 					
@@ -704,6 +734,8 @@ int main(int argc, char** argv)
 			GLCALL(glColorMask)(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 			
 			GLCALL(glClear)(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			
+			GLCALL(glColorMask)(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 			
 			auto mvLocation = glGetUniformLocation(simpleProgram.id, "mvMat");
 			auto pLocation = glGetUniformLocation(simpleProgram.id, "pMat");
@@ -836,8 +868,6 @@ int main(int argc, char** argv)
 			GLCALL(glBindBuffer)(GL_ARRAY_BUFFER, 0);
 			GLCALL(glBindBuffer)(GL_ELEMENT_ARRAY_BUFFER, 0);	
 			GLCALL(glUseProgram)(0);
-	
-			
 	
 			if (volumeVisualizationProgram != 0 && drawShadowVolume)
 			{
