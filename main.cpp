@@ -35,231 +35,14 @@
 #include "Shader.h"
 #include "simplifyModel.h"
 #include "edgeLookup.h"
-
-struct ShadowVolumeComputationInfo
-{
-	GLuint triCount;
-};
-
-using namespace glm;
-
- uint indexCount;
- uint indexOffset;
- vec3 lightDir = vec3(-1.0, -1.0, -1.0);
- float extrusionDistance = 100.0;
-
-
-
-struct InVertex
-{
-	float x;
-	float y;
-	float z;
-	int padding;
-};
-
-struct OutVertex
-{
-	vec4 position;
-	int multiplicity;
-	uint isCap;
-	uint padding0;
-	uint padding1;
-};
-
-std::vector<EdgeLookupNode> edgeLookup;
-
-	//vec4 position;
-	std::vector<InVertex> inVertices;
-	std::vector<GLuint> inIndices;
-	//std::vector<InVertex> inTriangles;
-	std::vector<OutVertex> outVertices;
-	uint outTriCount;
-
-
-
-vec3 position(InVertex vert)
-{
-	return vec3(vert.x, vert.y, vert.z);
-}
-
-bool isFrontFacing(vec3 a, vec3 b, vec3 c)
-{
-	vec3 ab = b - a;
-	vec3 ac = c - a;
-	vec3 n = cross(ab, ac);
-	return dot(normalize(n), normalize(lightDir)) < 0;
-	//return a.x > 0 && b.x > 0 && c.x > 0;
-}
-
-// Rezervuje trojuhelniky pro emitTriangle. Vhodne pro n > 1.
-uint reserveTriangles(uint n)
-{
-	uint old = outTriCount;
-	outTriCount = outTriCount + n;
-	outVertices.resize(outTriCount * 3);
-	return old;
-}
-
-void emitTriangle(uint idx, vec3 a, vec3 b, vec3 c, int multiplicity, uint isCap)
-{
-	idx *= 3;
-
-
-	OutVertex outVertex;
-	outVertex.multiplicity = multiplicity;
-	outVertex.isCap = isCap;
-
-	outVertex.position = vec4(a, 1.0);
-	outVertices[idx] = outVertex;
-	outVertex.position = vec4(b, 1.0);
-	outVertices[idx + 1] = outVertex;
-	outVertex.position = vec4(c, 1.0);
-	outVertices[idx + 2] = outVertex;
-}
-
-// zjisti, zda je bod point pred nebo za rovinou definovanou body a, b a c
-bool isInFront(vec3 point, vec3 a, vec3 b, vec3 c)
-{
-	vec3 ab = b - a;
-	vec3 ac = c - a;
-
-	vec3 normal = normalize(cross(ab, ac));
-	vec3 pointvec = normalize(point - a);
-	return dot(pointvec, normal) > 0.0;
-}
-int edgeLookupNodeCompare(EdgeLookupNode node, uint edge0, uint edge1)
-{
-	if (node.idx0 < edge0) return -1;
-	else if (node.idx0 > edge0) return 1;
-	else if (node.idx1 < edge1) return -1;
-	else if (node.idx1 > edge1) return 1;
-	else return 0;
-}
-
-bool hasEdge(EdgeLookupNode node, uint edge0, uint edge1)
-{
-	return (node.idx0 == edge0 && node.idx1 == edge1)
-		|| (node.idx0 == edge1 && node.idx1 == edge0);
-}
-
-// vrati id prvniho prvku v poli edgeLookup, ktery je na stejne hrane
-uint doEdgeLookup(uint edge0, uint edge1)
-{
-	if (edge0 < edge1)
-	{
-		uint tmp = edge0;
-		edge0 = edge1;
-		edge1 = tmp;
-	}
-
-	uint loIdx = 0;
-	uint hiIdx = indexCount;
-	uint midIdx;
-	EdgeLookupNode node;
-
-	// binarne vyhledame shodny prvek
-	while (true)
-	{
-		midIdx = ((float)loIdx + (float)hiIdx) / 2.0f;
-		node = edgeLookup[midIdx];
-		int comparison = edgeLookupNodeCompare(node, edge0, edge1);
-		if (comparison == -1) loIdx = midIdx;
-		else if (comparison == 1) hiIdx = midIdx;
-		else break;
-	}
-
-	// postupne se posuneme na nejnizsi shodny prvek
-	while (node.idx0 == edge0 && node.idx1 == edge1)
-	{
-		if (midIdx == 0)
-			return 0;
-		midIdx--;
-		node = edgeLookup[midIdx];
-	}
-
-	return midIdx + 1;
-}
-
-void compute()
-{
-	outVertices.clear();
-	outTriCount = 0;
-	for (int i = 0; i < indexCount / 3; i++){
-		uint triangleId = i;
-
-		if (triangleId * 3 < indexCount)
-		{
-			uint firstIdx = indexOffset + triangleId * 3;
-
-			uint aidx[3];
-			aidx[0] = inIndices[firstIdx];
-			aidx[1] = inIndices[firstIdx + 1];
-			aidx[2] = inIndices[firstIdx + 2];
-			vec3 a0 = position(inVertices[aidx[0]]);
-			vec3 a1 = position(inVertices[aidx[1]]);
-			vec3 a2 = position(inVertices[aidx[2]]);
-
-			vec3 extrusionVec = extrusionDistance * normalize(lightDir);
-
-			if (isFrontFacing(a0, a1, a2))
-			{
-				uint triIdx = reserveTriangles(2);
-				emitTriangle(triIdx, a0, a1, a2, -2, indexCount);
-				emitTriangle(triIdx + 1, a0 + extrusionVec, a2 + extrusionVec, a1 + extrusionVec, -2, indexCount);
-			}
-
-			uint edgeIndices[] = { aidx[0], aidx[1], aidx[1], aidx[2], aidx[2], aidx[0] };
-
-			for (uint edgeIdx = 0; edgeIdx < 3; edgeIdx++)
-			{
-				uint thisEdge[2];
-				thisEdge[0] = edgeIndices[edgeIdx * 2];
-				thisEdge[1] = edgeIndices[edgeIdx * 2 + 1];
-				int edgeMultiplicity = 0;
-				bool ignore = false;
-				uint edgeNode;
-				for (edgeNode = doEdgeLookup(thisEdge[0], thisEdge[1]);
-					edgeNode < indexCount && hasEdge(edgeLookup[edgeNode], thisEdge[0], thisEdge[1]);
-					edgeNode++)
-				{
-					EdgeLookupNode node = edgeLookup[edgeNode];
-
-					// kazdou hranu zpracovava trojuhelnik s nejnizsim indexem
-					if (node.triangleIdx < triangleId)
-					{
-						ignore = true;
-						break;
-					}
-
-					vec3 edge0 = position(inVertices[thisEdge[0]]);
-					vec3 edge1 = position(inVertices[thisEdge[1]]);
-					vec3 thirdVert = position(inVertices[node.idx2]);
-
-					edgeMultiplicity += isInFront(thirdVert, edge0, edge1, edge1 + lightDir) ? -1 : 1;
-				}
-
-				if (!ignore && edgeMultiplicity != 0)
-				{
-					vec3 edge0 = position(inVertices[edgeIndices[edgeIdx * 2]]);
-					vec3 edge1 = position(inVertices[edgeIndices[edgeIdx * 2 + 1]]);
-
-					uint triIdx = reserveTriangles(2);
-					emitTriangle(triIdx, edge0, edge1, edge0 + extrusionVec, edgeMultiplicity, 0);
-					emitTriangle(triIdx + 1, edge1, edge1 + extrusionVec, edge0 + extrusionVec, edgeMultiplicity, 0);
-				}
-			}
-		}
-
-	} //for
-}
+#include "shadowComputationTypes.h"
+#include "cpuImpl.h"
 
 int main(int argc, char** argv)
 {
 	if (argc < 3)
 	{
 		throw std::runtime_error("Nesprávný počet parametrů. Správné použité je: \npgpu-real-time-shadows <model scény> <stínící model>");
-		return 1; //jinak to pak stejne cte nullptr
 	}
 
 	auto environmentModelFilename = std::string(argv[1]);
@@ -323,8 +106,9 @@ int main(int argc, char** argv)
 	
 	std::cout << "Generujeme buffer pro vyhledávání hran" << std::endl;
 	
-	//std::vector<EdgeLookupNode> edgeLookup;		//used global one..
+	std::vector<EdgeLookupNode> edgeLookup;
 	generateEdgeLookup(simplifiedModel, simplifiedIndices, edgeLookup);
+	
 	std::vector<decltype(environmentModel)*> scene = { &environmentModel, &shadowModel };
 	
 	std::cout << "Vytváříme buffery" << std::endl;
@@ -380,7 +164,6 @@ int main(int argc, char** argv)
 	GLCALL(glBindTexture)(GL_TEXTURE_2D, stencilTextureID);
 	GLCALL(glTexImage2D)(GL_TEXTURE_2D, 0, GL_R32I, windowWidth, windowHeight, 0, GL_RED_INTEGER, GL_INT, nullptr);
 	GLCALL(glBindTexture)(GL_TEXTURE_2D, 0);
-
 	glBindTexture(GL_TEXTURE_2D, 0);
 		
 	GLuint vbo;
@@ -392,28 +175,12 @@ int main(int argc, char** argv)
 	GLCALL(glGenBuffers)(1, &ibo);
 	GLCALL(glGenBuffers)(1, &shadowVolumeBuffer);
 	GLCALL(glGenBuffers)(1, &shadowVolumeComputationInfo);
-
-		//must reformat
-		for (auto vertex : vertices){
-			InVertex v;
-			v.x = vertex._x;
-			v.y = vertex._y;
-			v.z = vertex._z;
-			inVertices.push_back(v);
-		}
 		
-		GLCALL(glBindBuffer)(GL_ARRAY_BUFFER, vbo);
-		GLCALL(glBufferData)(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_STATIC_DRAW);
+	GLCALL(glBindBuffer)(GL_ARRAY_BUFFER, vbo);
+	GLCALL(glBufferData)(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_STATIC_DRAW);
 
-		GLCALL(glBindBuffer)(GL_ELEMENT_ARRAY_BUFFER, ibo);
-		GLCALL(glBufferData)(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), indices.data(), GL_STATIC_DRAW);
-		
-		
-
-		GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, shadowVolumeBuffer);
-		// *7, protože pro každý trojúhelník můžeme potenciálně vygenerovat až 7 dalších trojúhelníků
-		GLCALL(glBufferData)(GL_SHADER_STORAGE_BUFFER, shadowModel.indexCount * sizeof(ShadowVolumeVertex) * 7, nullptr, GL_DYNAMIC_COPY);
-
+	GLCALL(glBindBuffer)(GL_ELEMENT_ARRAY_BUFFER, ibo);
+	GLCALL(glBufferData)(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), indices.data(), GL_STATIC_DRAW);
 
 	GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, shadowVolumeBuffer);
 	// *7, protože pro každý trojúhelník můžeme potenciálně vygenerovat až 7 dalších trojúhelníků
@@ -437,9 +204,6 @@ int main(int argc, char** argv)
 	GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, edgeLookupBuffer);
 	GLCALL(glBufferData)(GL_SHADER_STORAGE_BUFFER, edgeLookup.size() * sizeof(EdgeLookupNode), edgeLookup.data(), GL_STATIC_DRAW);
 
-	inIndices = simplifiedIndices;  //CPU
-	outVertices.resize(simplifiedIndices.size() * 7);	// CPU
-	//edgeLookup  je pouzite stejne..
 	GLCALL(glBindBuffer)(GL_ARRAY_BUFFER, 0);
 	GLCALL(glBindBuffer)(GL_ELEMENT_ARRAY_BUFFER, 0);
 	GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, 0);
@@ -520,7 +284,11 @@ int main(int argc, char** argv)
 					{
 						case SDLK_r: rotate = !rotate; break;
 						case SDLK_t: drawShadowVolume = !drawShadowVolume; break;
-						case SDLK_c: CPU = !CPU; break;
+						case SDLK_c: 
+							CPU = !CPU; 
+							if (CPU) std::cout << "Nyní se používá CPU" << std::endl;
+							else std::cout << "Nyní se používá GPU" << std::endl;
+							break;
 						case SDLK_F5: loadShaders = true; break;
 					}
 					break;
@@ -635,87 +403,79 @@ int main(int argc, char** argv)
 				}
 			}
 			
-			if (volumeComputationProgram != 0)
 			{
 				unsigned computationStartTicks = SDL_GetTicks();
-				GLCALL(glUseProgram)(volumeComputationProgram);
-				
+				auto lightDir = glm::mat3(glm::inverse(shadowModel.transform)) * glm::normalize(glm::vec3(-1.0f, -1.0f, -1.0f));
 				shadowVolumeInfo.triCount = 0;
 				
-				GLCALL(glMemoryBarrier)(GL_ALL_BARRIER_BITS);
-				
-				GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, shadowVolumeComputationInfo);
-				GLCALL(glBufferData)(GL_SHADER_STORAGE_BUFFER, sizeof(ShadowVolumeComputationInfo), nullptr, GL_STREAM_READ);
-				GLCALL(glBufferData)(GL_SHADER_STORAGE_BUFFER, sizeof(ShadowVolumeComputationInfo), &shadowVolumeInfo, GL_STREAM_READ);
-				GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, 0);
-				
-				auto lightDirLocation = glGetUniformLocation(volumeComputationProgram, "lightDir");
-
-				if (lightDirLocation != -1)
+				if (CPU)
 				{
-					auto lightDir = glm::normalize(glm::vec3(-1.0f, -1.0f, -1.0f));
-					lightDir = glm::mat3(glm::inverse(shadowModel.transform)) * lightDir;
+					std::vector<ShadowVolumeVertex> shadowVolumeVertices;
+					shadowVolumeVertices.reserve(simplifiedModel.indexCount * 7);
+					
+					shadowVolumeInfo = compute(
+						simplifiedModel.baseIndex,
+						simplifiedModel.indexCount,
+						lightDir,
+						100.0f,
+						simplifiedVertices,
+						simplifiedIndices,
+						edgeLookup,
+						shadowVolumeVertices
+					);
+					
+					std::cout << "Máme " << shadowVolumeInfo.triCount << " trianglů" << std::endl;
+					for (unsigned i = 0; i < shadowVolumeInfo.triCount; i++)
+					{
+						//std::cout << shadowVolumeVertices.at(i).x << ", " << shadowVolumeVertices.at(i).y << ", " << shadowVolumeVertices.at(i).z << ": " << shadowVolumeVertices.at(i).multiplicity << ", " << shadowVolumeVertices.at(i).isCap << std::endl;
+					}
+					
+					glBindBuffer(GL_ARRAY_BUFFER, shadowVolumeBuffer);
+					glBufferData(GL_ARRAY_BUFFER, shadowVolumeVertices.size() * sizeof(ShadowVolumeVertex), nullptr, GL_DYNAMIC_DRAW);
+					glBufferData(GL_ARRAY_BUFFER, shadowVolumeVertices.size() * sizeof(ShadowVolumeVertex), shadowVolumeVertices.data(), GL_DYNAMIC_DRAW);
+					glBindBuffer(GL_ARRAY_BUFFER, 0);
+				}
+				else if (volumeComputationProgram != 0)
+				{
+					GLCALL(glUseProgram)(volumeComputationProgram);
+					
+					GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, shadowVolumeComputationInfo);
+					GLCALL(glBufferData)(GL_SHADER_STORAGE_BUFFER, sizeof(ShadowVolumeComputationInfo), nullptr, GL_STREAM_READ);
+					GLCALL(glBufferData)(GL_SHADER_STORAGE_BUFFER, sizeof(ShadowVolumeComputationInfo), &shadowVolumeInfo, GL_STREAM_READ);
+					GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, 0);
+					
+					auto lightDirLocation = glGetUniformLocation(volumeComputationProgram, "lightDir");
 					glUniform3fv(lightDirLocation, 1, glm::value_ptr(lightDir));
 
-					::lightDir = lightDir;   //CPU
-				}
-				
+					GLCALL(glBindBufferBase)(GL_SHADER_STORAGE_BUFFER, 0, simpleVbo);
+					GLCALL(glBindBufferBase)(GL_SHADER_STORAGE_BUFFER, 1, simpleIbo);
+					GLCALL(glBindBufferBase)(GL_SHADER_STORAGE_BUFFER, 2, shadowVolumeBuffer);
+					GLCALL(glBindBufferBase)(GL_SHADER_STORAGE_BUFFER, 3, shadowVolumeComputationInfo);
+					GLCALL(glBindBufferBase)(GL_SHADER_STORAGE_BUFFER, 4, edgeLookupBuffer);
+					
+					auto indexOffsetLocation = GLCALL(glGetUniformLocation)(volumeComputationProgram, "indexOffset");
+					GLCALL(glUniform1ui)(indexOffsetLocation, simplifiedModel.baseIndex);
+					
+					auto indexCountLocation = GLCALL(glGetUniformLocation)(volumeComputationProgram, "indexCount");
+					GLCALL(glUniform1ui)(indexCountLocation, simplifiedModel.indexCount);
 
-				GLCALL(glBindBufferBase)(GL_SHADER_STORAGE_BUFFER, 0, simpleVbo);
-				GLCALL(glBindBufferBase)(GL_SHADER_STORAGE_BUFFER, 1, simpleIbo);
-				GLCALL(glBindBufferBase)(GL_SHADER_STORAGE_BUFFER, 2, shadowVolumeBuffer);
-				GLCALL(glBindBufferBase)(GL_SHADER_STORAGE_BUFFER, 3, shadowVolumeComputationInfo);
-				GLCALL(glBindBufferBase)(GL_SHADER_STORAGE_BUFFER, 4, edgeLookupBuffer);
-				
-				auto indexOffsetLocation = GLCALL(glGetUniformLocation)(volumeComputationProgram, "indexOffset");
-				GLCALL(glUniform1ui)(indexOffsetLocation, simplifiedModel.baseIndex);
+					if (!CPU){
+						GLCALL(glDispatchCompute)((shadowModel.indexCount / 3 + 127) / 128, 1, 1);
+					}
+					GLCALL(glMemoryBarrier)(GL_ALL_BARRIER_BITS);
 
-				indexOffset = simplifiedModel.baseIndex;		//pro CPU
-				
-				auto indexCountLocation = GLCALL(glGetUniformLocation)(volumeComputationProgram, "indexCount");
-				GLCALL(glUniform1ui)(indexCountLocation, simplifiedModel.indexCount);
-				
+					for (unsigned i = 0; i < 5; i++)
+						GLCALL(glBindBufferBase)(GL_SHADER_STORAGE_BUFFER, i, 0);
 
-				indexCount = simplifiedModel.indexCount;       //pro CPU
-				if (!CPU){
-					GLCALL(glDispatchCompute)((shadowModel.indexCount / 3 + 127) / 128, 1, 1);
-				}
-				GLCALL(glUseProgram)(0);
-				GLCALL(glMemoryBarrier)(GL_ALL_BARRIER_BITS);
-
-				for (unsigned i = 0; i < 4; i++)
-					GLCALL(glBindBufferBase)(GL_SHADER_STORAGE_BUFFER, i, 0);
-				
-
-				if (!CPU){
-					// debug vypisy
 					GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, shadowVolumeComputationInfo);
-					shadowVolumeInfo = *reinterpret_cast<ShadowVolumeComputationInfo*>(GLCALL(glMapBuffer)(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY));
-					GLCALL(glUnmapBuffer)(GL_SHADER_STORAGE_BUFFER);
+					GLCALL(glGetBufferSubData)(GL_SHADER_STORAGE_BUFFER, 0, sizeof(ShadowVolumeComputationInfo), &shadowVolumeInfo);
 					GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, 0);
+					
+					GLCALL(glUseProgram)(0);
 				}
-
-				////
-				if (CPU){
-					//outVertices.clear();
-					compute();
-					glBindBuffer(GL_ARRAY_BUFFER, shadowVolumeBuffer);
-					glBufferData(GL_ARRAY_BUFFER, outVertices.size() * sizeof(OutVertex), outVertices.data(), GL_DYNAMIC_DRAW);
-					glBindBuffer(GL_ARRAY_BUFFER, 0);
-					shadowVolumeInfo.triCount = outTriCount;
-				}
-				
-				/*GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, shadowVolumeBuffer);
-				auto verts = reinterpret_cast<ShadowVolumeVertex*>(GLCALL(glMapBuffer)(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY));
-				for (unsigned i = 0; i < shadowVolumeInfo.triCount  * 3; i++)
-					std::cout << verts[i].x << ", " << verts[i].y << ", " << verts[i].z << ": " << verts[i].multiplicity << ", " << verts[i].isCap << std::endl;
-				GLCALL(glUnmapBuffer)(GL_SHADER_STORAGE_BUFFER);
-				GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, 0);*/
-				GLCALL(glUseProgram)(0);
 				
 				frameComputationTickCounter += SDL_GetTicks() - computationStartTicks;
 			}
-			
 					
 			//this bit should clear stencil texture between runs
 			GLint clearColor[] = { 0 };
@@ -767,13 +527,11 @@ int main(int argc, char** argv)
 			
 			///////////////////////////////////////////////////////////////////////////////////////////////////////
 			
-			//GLCALL(glClear)(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-			//glClear(GL_DEPTH_BUFFER_BIT);
 			stencilProgram.useProgram();
 			glDepthMask(GL_FALSE);
 			glDepthFunc(GL_LESS);
 			glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);  //just in case
-			//glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+			glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
 			glBindBuffer(GL_ARRAY_BUFFER, shadowVolumeBuffer); //bind output of compute shader as array buffer
 			
@@ -790,20 +548,11 @@ int main(int argc, char** argv)
 			for (int i = 0; i < numArrays; i++)
 				glEnableVertexAttribArray(i);
 
-			if (CPU){
-				// pozice vcetne w -> 4 floaty
-				glVertexAttribPointer(0u, 4, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(OutVertex), reinterpret_cast<void*>(offsetof(OutVertex, position.x)));
-				// multiplicita
-				glVertexAttribIPointer(1u, 1, GL_INT, (GLsizei) sizeof(OutVertex), reinterpret_cast<void*>(offsetof(OutVertex, multiplicity)));
+			// pozice vcetne w -> 4 floaty
+			glVertexAttribPointer(0u, 4, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(ShadowVolumeVertex), reinterpret_cast<void*>(offsetof(ShadowVolumeVertex, x)));
+			// multiplicita
+			glVertexAttribIPointer(1u, 1, GL_INT, (GLsizei) sizeof(ShadowVolumeVertex), reinterpret_cast<void*>(offsetof(ShadowVolumeVertex, multiplicity)));	
 			
-			
-			}
-			else {
-				// pozice vcetne w -> 4 floaty
-				glVertexAttribPointer(0u, 4, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(ShadowVolumeVertex), reinterpret_cast<void*>(offsetof(ShadowVolumeVertex, x)));
-				// multiplicita
-				glVertexAttribIPointer(1u, 1, GL_INT, (GLsizei) sizeof(ShadowVolumeVertex), reinterpret_cast<void*>(offsetof(ShadowVolumeVertex, multiplicity)));
-			}
 			glDrawArrays(GL_TRIANGLES, 0, shadowVolumeInfo.triCount * 3);
 
 			for (int i = 0; i < numArrays; i++)
@@ -919,7 +668,6 @@ int main(int argc, char** argv)
 	}
 	
 	glDeleteTextures(1, &stencilTextureID);
-	//glDeleteFramebuffers(1, &stencilFrameBufferID);
 
 	GLCALL(glDeleteBuffers)(1, &vbo);
 	GLCALL(glDeleteBuffers)(1, &ibo);
