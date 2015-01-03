@@ -57,4 +57,6 @@ struct ShadowVolumeVertex
 	int padding[2];
 };
 
+static_assert(sizeof(ShadowVolumeVertex) == sizeof(float) * 8, "Velikost struktury ShadowVolumeVertex neni 8 floatu");
+
 #endif

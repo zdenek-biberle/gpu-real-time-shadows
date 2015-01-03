@@ -427,11 +427,11 @@ int main(int argc, char** argv)
 					std::cout << "Máme " << shadowVolumeInfo.triCount << " trianglů" << std::endl;
 					for (unsigned i = 0; i < shadowVolumeInfo.triCount; i++)
 					{
-						//std::cout << shadowVolumeVertices.at(i).x << ", " << shadowVolumeVertices.at(i).y << ", " << shadowVolumeVertices.at(i).z << ": " << shadowVolumeVertices.at(i).multiplicity << ", " << shadowVolumeVertices.at(i).isCap << std::endl;
+						std::cout << shadowVolumeVertices.at(i).x << ", " << shadowVolumeVertices.at(i).y << ", " << shadowVolumeVertices.at(i).z << ": " << shadowVolumeVertices.at(i).multiplicity << ", " << shadowVolumeVertices.at(i).isCap << std::endl;
 					}
 					
 					glBindBuffer(GL_ARRAY_BUFFER, shadowVolumeBuffer);
-					glBufferData(GL_ARRAY_BUFFER, shadowVolumeVertices.size() * sizeof(ShadowVolumeVertex), nullptr, GL_DYNAMIC_DRAW);
+					//glBufferData(GL_ARRAY_BUFFER, shadowVolumeVertices.size() * sizeof(ShadowVolumeVertex), nullptr, GL_DYNAMIC_DRAW);
 					glBufferData(GL_ARRAY_BUFFER, shadowVolumeVertices.size() * sizeof(ShadowVolumeVertex), shadowVolumeVertices.data(), GL_DYNAMIC_DRAW);
 					glBindBuffer(GL_ARRAY_BUFFER, 0);
 				}
