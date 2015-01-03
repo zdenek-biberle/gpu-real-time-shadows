@@ -22,20 +22,20 @@ GLuint createShaderFromSource(const std::string& source, GLenum type)
 	auto sourcePtr = (const GLchar*) source.data();
 	auto sourceLength = (GLint) source.size();
 	
-	auto shader = GLCALL(glCreateShader)(type);
+	auto shader = glCreateShader(type);
 	if (shader == 0) throw std::runtime_error(std::string("Chyba při vytváření shaderu typu ") + shaderTypeToString(type));
-	GLCALL(glShaderSource)(shader, 1, &sourcePtr, &sourceLength);
-	GLCALL(glCompileShader)(shader);
+	glShaderSource(shader, 1, &sourcePtr, &sourceLength);
+	glCompileShader(shader);
 	
 	GLint compileStatus;
-	GLCALL(glGetShaderiv)(shader, GL_COMPILE_STATUS, &compileStatus);
+	glGetShaderiv(shader, GL_COMPILE_STATUS, &compileStatus);
 	if (compileStatus == GL_FALSE)
 	{
 		GLint infoLogLength;
-		GLCALL(glGetShaderiv)(shader, GL_INFO_LOG_LENGTH, &infoLogLength);
+		glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &infoLogLength);
 		
 		auto log = std::vector<GLchar>(infoLogLength);
-		GLCALL(glGetShaderInfoLog)(shader, infoLogLength, nullptr, log.data());
+		glGetShaderInfoLog(shader, infoLogLength, nullptr, log.data());
 			
 		auto exStr = std::string("Kompilace shaderu ") + shaderTypeToString(type) + " failnula: \n";
 		exStr.append(log.begin(), log.end());
@@ -73,34 +73,34 @@ GLuint createProgram(
 		for (auto& source : computeShaders)
 			shaders.push_back(createShaderFromSource(source, GL_COMPUTE_SHADER));
 	
-		auto program = GLCALL(glCreateProgram)();
+		auto program = glCreateProgram();
 		for (auto shader : shaders)
-			GLCALL(glAttachShader)(program, shader);
+			glAttachShader(program, shader);
 		
-		GLCALL(glLinkProgram)(program);
+		glLinkProgram(program);
 		GLint linkStatus;
-		GLCALL(glGetProgramiv)(program, GL_LINK_STATUS, &linkStatus);
+		glGetProgramiv(program, GL_LINK_STATUS, &linkStatus);
 		if (linkStatus == GL_FALSE)
 		{
 			GLint infoLogLength;
-			GLCALL(glGetProgramiv)(program, GL_INFO_LOG_LENGTH, &infoLogLength);
+			glGetProgramiv(program, GL_INFO_LOG_LENGTH, &infoLogLength);
 			
 			auto log = std::vector<GLchar>(infoLogLength);
-			GLCALL(glGetProgramInfoLog)(program, infoLogLength, nullptr, log.data());
+			glGetProgramInfoLog(program, infoLogLength, nullptr, log.data());
 			std::string exStr = "Linkování programu selhalo: \n";
 			exStr.append(log.begin(), log.end());
 			throw std::runtime_error(exStr);
 		}
 		
 		for (auto shader : shaders)
-			GLCALL(glDeleteShader)(shader);
+			glDeleteShader(shader);
 			
 		return program;
 	}
 	catch (std::exception& ex)
 	{
 		for (auto shader : shaders)
-			GLCALL(glDeleteShader)(shader);
+			glDeleteShader(shader);
 			
 		throw;
 	}
