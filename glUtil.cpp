@@ -4,6 +4,9 @@
 
 void GLAPIENTRY debugFunc(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const GLvoid* userParam)
 {
+	if (id == 131185) return; // nvidia a její info o bufferech
+	if (id == 131186) return; // nvidia a její info o bufferech
+	
 	std::string srcName;
 	switch(source)
 	{
