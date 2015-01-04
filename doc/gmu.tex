@@ -68,7 +68,7 @@
 	\captionof{figure}{Králíček a jeho stínové těleso}
 \end{figure}
 
-Aplikace provádí generování stínového tělesa pro libovolný model na CPU i na GPU a scénu poté zobrazuje s jeho použitím. Dodatečně umožňuje i zobrazení samotného stínového tělesa. Ovšem dle našich zkušeností nefunguje generování stínového tělesa na grafických akrtách od společnosti AMD.
+Aplikace provádí generování stínového tělesa pro libovolný model na CPU i na GPU a scénu poté zobrazuje s jeho použitím. Dodatečně umožňuje i zobrazení samotného stínového tělesa. Ovšem dle našich zkušeností nefunguje generování stínového tělesa na grafických kartách od společnosti AMD.
 
 \subsection{Generování stínových těles i pro non-manifold geometrii}
 
@@ -99,7 +99,7 @@ Měření bylo provedeno na jediném počítači s grafickou kartou od společno
 \begin{itemize}
 	\item CPU: Intel Core i5-3230M, 2,60 GHz
 	\item GPU: nVidia 730M
-	\item RAM: 4GiB DDR3 1.6 GHz
+	\item RAM: 4 GiB DDR3 1.6 GHz
 	\item Operační systém: Arch Linux, jádro linux-ck 3.18.1-8
 	\item Ovladač GPU: nvidia-ck, 343.36-3
 \end{itemize}
@@ -110,12 +110,12 @@ Ze získaných výsledků vidíme očekávanou neefektivitu GPU implementace pro
 
 Algoritmus pro každý trojúhelník stínícího objektu provede následující:
 \begin{itemize}
-	\item Zkontroluje, zda je trojúhelník natočen ke světlu. Pokud ano, tak jej přenese do výstupního bufferu a zároveň přidá i patřičně upravenou verzi tohoto trjúhelníku na konci stínového tělesa.
+	\item Zkontroluje, zda je trojúhelník natočen ke světlu. Pokud ano, tak jej přenese do výstupního bufferu a zároveň přidá i patřičně upravenou verzi tohoto trojúhelníku na konci stínového tělesa.
 	\item Pro každou hranu tohoto trojúhelníku provede následující:
 		\begin{itemize}
 			\item Binárním vyhledáváním nalezne v pomocném poli pro vyhledávání trojúhelníků všechny ostatní trojúhelníky, které sdílí tuto hranu.
 			\item Zkontroluje, zda je tento trojúhelník vlastníkem této hrany (tj. neexistuje trojúhelník, který sdílí tuto hranu a má nižší index). Pokud tomu tak není, tak přejde na další hranu.
-			\item Projde nalezené přilehlé trojúhelníky a na základě jejich pozice v prostoru vůču světlu spočítá multiplicitu hrany. 
+			\item Projde nalezené přilehlé trojúhelníky a na základě jejich pozice v prostoru vůči světlu spočítá multiplicitu hrany. 
 			\item Pokud výsledná multiplicita není nulová, tak hranu protáhne a přenese do výstupního bufferu.
 		\end{itemize}
 \end{itemize}
@@ -134,7 +134,7 @@ Algoritmus pro každý trojúhelník stínícího objektu provede následující
 %---------------------------------------------------------------------------
 \section{Zvláštní použité znalosti}
 
-Použití OpenGL compute shaderů se různě liší od použití OpenCL či CUDA. To vyžadovalo získání dodatečných informací o jejich využívání a o komunikaci s němi. Dále také využití image load/store v OpenGL shaderech pro vytvoření vlastního "stencil bufferu".
+Použití OpenGL compute shaderů se různě liší od použití OpenCL či CUDA. To vyžadovalo získání dodatečných informací o jejich využívání a o komunikaci s nimi. Dále také využití image load/store v OpenGL shaderech pro vytvoření vlastního "stencil bufferu".
 
 %---------------------------------------------------------------------------
 \section{Rozdělení práce v týmu}
@@ -148,7 +148,7 @@ Použití OpenGL compute shaderů se různě liší od použití OpenCL či CUDA
 \paragraph{Zdeněk Biberle}
 Značnou část času jsem strávil nad komunikací mezi aplikací a compute shaderů. Později jsem zjistil, že implementace SSBO na grafických kartách od AMD se v současnosti vyznačuje různými problémy a tudíž jsem řešil nevyřešitelné. Náročné bylo také vymyslet, jak vygenerovaná data použít pro z-fail algoritmus. To se nám ovšem ve finále úspěšně nepodařilo a ve výsledné aplikaci je tak použit algoritmus z-pass.
 
-\paragraph{Vít Hodes} Přijít na to, jak implementovat celočíselný "stencil buffer" s obecným přístupem ze shaderů. Po prozkoumání několika slepých cest se dospělo k řešení pomocí iimage2D a atomického sčítání. Taky implementovat stíny nad shadow volume, který se mi na AMD kartě negeneruje správně se moc nedá.
+\paragraph{Vít Hodes} Přijít na to, jak implementovat celočíselný "stencil buffer" s obecným přístupem ze shaderů. Po prozkoumání několika slepých cest se dospělo k řešení pomocí iimage2D a atomického sčítání. Taktéž implementovat stíny nad shadow volume, který se mi na AMD kartě negeneruje správně se moc nedá.
 
 %---------------------------------------------------------------------------
 \section{Zkušenosti získané řešením projektu}
@@ -172,11 +172,11 @@ Značnou část času jsem strávil nad komunikací mezi aplikací a compute sha
 \section{Autoevaluace}
 
 \paragraph{Technický návrh (75\%):}
-Technický návrh je slušný, problém byl vhodně rozložen na podproblémy, snad jen smaotný výpočet stínového tělesa mohl být dodatečně rozdělen na dvě části (jedna zpracovávající trojúhelníky a druhá zpracovávající hrany).
+Technický návrh je slušný, problém byl vhodně rozložen na podproblémy, snad jen samotný výpočet stínového tělesa mohl být dodatečně rozdělen na dvě části (jedna zpracovávající trojúhelníky a druhá zpracovávající hrany).
 
 
 \paragraph{Programování (65\%):} 
-Vzhledem ke kratšímu rozsahu se moc neuplatnuje zapouzdření ve vykreslovací části. Znovupoužitelnost
+Vzhledem ke kratšímu rozsahu se moc neuplatňuje zapouzdření ve vykreslovací části. Znovupoužitelnost
 spíše znalostí než konkrétního kódu. Mimo vykreslovací část je kód poměrně dobře čitelný.
 
 \paragraph{Vzhled vytvořeného řešení (40\%):} 
