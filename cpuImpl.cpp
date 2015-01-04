@@ -13,11 +13,11 @@ bool isFrontFacing(const glm::vec3& lightDir, const glm::vec3& a, const glm::vec
 	return glm::dot(glm::normalize(n), glm::normalize(lightDir)) < 0;
 }
 
-void emitTriangle(std::vector<ShadowVolumeVertex>& outVertices, const glm::vec3 a, const glm::vec3 b, const glm::vec3 c, int multiplicity, unsigned isCap)
+void emitTriangle(std::vector<ShadowVolumeVertex>& outVertices, const glm::vec3& a, const glm::vec3& b, const glm::vec3& c, int multiplicity, unsigned isCap)
 {
-	outVertices.push_back(ShadowVolumeVertex(a.x, a.y, a.z, multiplicity, isCap));
-	outVertices.push_back(ShadowVolumeVertex(b.x, b.y, b.z, multiplicity, isCap));
-	outVertices.push_back(ShadowVolumeVertex(c.x, c.y, c.z, multiplicity, isCap));
+	outVertices.push_back(ShadowVolumeVertex(a, multiplicity, isCap));
+	outVertices.push_back(ShadowVolumeVertex(b, multiplicity, isCap));
+	outVertices.push_back(ShadowVolumeVertex(c, multiplicity, isCap));
 }
 
 // zjisti, zda je bod point pred nebo za rovinou definovanou body a, b a c

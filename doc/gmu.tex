@@ -7,8 +7,19 @@
 %---------------------------------------------------------------------------
 \section{Zadání}
 
-Implementace generovaní shadow volumes siluet pomocí compute shaderů a následné využití těchto siluet
-pro tvorbu stínů pomocí z-fail algoritmu.
+\begin{itemize}
+	\item Výpočet stínových těles
+		\begin{itemize}
+			\item Implementace na GPU
+			\item Implementace na CPU pro porovnání rychlosti
+		\end{itemize}
+	\item Vytvoření demonstrační aplikace
+		\begin{itemize}
+			\item Vykreslení scény se stíny pomocí patřičně modifikovaného z-fail algoritmu
+			\item Měření rychlosti
+			\item Různé vizualizační pomůcky
+		\end{itemize} vypočítaná stínová tělesa na jendoduché scéně
+\end{itemize}
 
 %---------------------------------------------------------------------------
 \section{Použité technologie}
@@ -34,21 +45,40 @@ pro tvorbu stínů pomocí z-fail algoritmu.
 
 %---------------------------------------------------------------------------
 \section{Použité zdroje}
-	\begin{itemize}
-		\item Stanford bunny
-	\end{itemize}
+\begin{itemize}
+	\item Stanford bunny
+	\item Utah teapot
+	\item Byungmoon Kim, Kihwan Kim, Greg Turk - Real Time Shadow of Transparent Casters Using Shadow Volume, 2007
+	\item Dokumentace OpenGL 4.3
+\end{itemize}
 %---------------------------------------------------------------------------
 \section{Nejdůležitější dosažené výsledky}
-
-\subsection {Generování stínového tělesa, jeho vykreslení a vizualizace}
 
 \begin{figure}[h]
 	\captionsetup{type=figure}
 	\includegraphics[width=\textwidth]{images/bunny.png}
-	\captionof{figure}{Textura mraky.glsl}
+	\captionof{figure}{Králíček vrhající stín na terén}
 \end{figure}
 
-Funguje generování shadow volume na Nvidia kartách.
+\begin{figure}[h]
+	\captionsetup{type=figure}
+	\includegraphics[width=\textwidth]{images/bunny-volume.png}
+	\captionof{figure}{Králíček a jeho stínové těleso}
+\end{figure}
+
+Aplikace provádí generování stínového tělesa pro libovolný model na CPU i na GPU a scénu poté zobrazuje s jeho použitím. Dodatečně umožňuje i zobrazení samotného stínového tělesa. Ovšem dle našich zkušeností nefunguje generování stínového tělesa na grafických akrtách od společnosti AMD.
+
+\subsection{Generování stínových těles i pro non-manifold geometrii}
+
+\begin{figure}[h]
+	\captionsetup{type=figure}
+	\includegraphics[width=\textwidth]{images/multiple-raised-planes.png}
+	\captionof{figure}{Geometrie složená z několika non-manifold částí vrhající stíny}
+	\label{fig:multiple-raised-planes}
+\end{figure}
+
+Zadaný algoritmus umožňuje generování stínových těles i pro non-manifold geometrii. Na obrázku \ref{fig:multiple-raised-planes} vidíme několik čtverců vrhajících korektní stín. Každý tento čtverec je složen pouze ze dvou trojúhelníků a není tedy možné na ně aplikovat běžný algoritmus generování stínových těles (tj. protažení hran mezi dvěma trojúhelníky, kde jeden je natočen ke světlu a druhý je od světla odvrácen) tak, aby dosáhl správného výsledku.
+
 
 %---------------------------------------------------------------------------
 \section{Ovládání vytvořeného programu}
@@ -70,14 +100,13 @@ Využití image load/store v shaderech openGL pro vytvoření vlastního "stenci
 %---------------------------------------------------------------------------
 \section{Rozdělení práce v týmu}
 
-\paragraph{Zdeněk Biberle} Základ aplikace, compute shader pro výpočet stínového tělesa.
-\paragraph{Vít Hodes} Vykreslení scény za použití stínového tělesa, nahrávání modelů.
+\paragraph{Zdeněk Biberle} Základ aplikace, GPU výpočet stínového tělesa.
+\paragraph{Vít Hodes} Vykreslení scény za použití stínového tělesa, nahrávání modelů, CPU výpočet stínového tělesa.
 
 %---------------------------------------------------------------------------
 \section{Co bylo nejpracnější}
 
 \paragraph{Zdeněk Biberle}
-
 Značnou část času jsem strávil nad komunikací mezi aplikací a compute shaderů. Později jsem zjistil, že implementace SSBO na grafických kartách od AMD se v současnosti vyznačuje různými problémy a tudíž jsem řešil nevyřešitelné.
 
 \paragraph{Vít Hodes} Přijít na to, jak impementovat celočíselný "stencil buffer" s obecným přístupem ze shaderů. Po prozkoumání několika slepých cest se dospělo k řešení pomocí iimage2D a atomického sčítání. Taky implementovat stíny nad shadow volume, který se mi na AMD kartě negeneruje správně se moc nedá.
@@ -129,7 +158,7 @@ Komunikace dobrá.
 
 \paragraph{Celkový dojem (70\%):} (pracnost, získané dovednosti, užitečnost,
 volba zadání, cokoliv, $\ldots$)
-Projekt byl zajímavý a potenciálně velmi užitečný. Škoda problémů s různými platformami(AMD x Nvidia).
+Projekt byl zajímavý a potenciálně velmi užitečný. Škoda problémů s různými platformami(AMD x nVidia).
 
 %---------------------------------------------------------------------------
 \section{Doporučení pro budoucí zadávání projektů}
