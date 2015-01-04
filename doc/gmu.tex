@@ -85,6 +85,7 @@ Zadaný algoritmus umožňuje generování stínových těles i pro non-manifold
 
 Měřením času provádění CPU i GPU implementace při použití různých modelů jsme získali následující data:
 
+\vspace{0.5cm}
 \begin{tabular}{l|c|c|c|c}
 	Název modelu   & Počet trojúhelníků  & CPU - čas  & GPU - čas & Zrychlení GPU oproti CPU \\
 	\hline
@@ -94,6 +95,7 @@ Měřením času provádění CPU i GPU implementace při použití různých mo
 	teapot.obj     & 36096   & 0,107 s    & 7,135 ms  & 15,023 \\
 	teapot-big.obj & 324864  & 0,949 s    & 50,974 ms & 18,620 \\
 \end{tabular}
+\vspace{0.5cm}
 
 Měření bylo provedeno na jediném počítači s grafickou kartou od společnosti nVidia, který jsme měli k dispozici. Jeho HW a SW vybavení bylo následující:
 \begin{itemize}
@@ -146,7 +148,9 @@ Použití OpenGL compute shaderů se různě liší od použití OpenCL či CUDA
 \section{Co bylo nejpracnější}
 
 \paragraph{Zdeněk Biberle}
-Značnou část času jsem strávil nad komunikací mezi aplikací a compute shaderů. Později jsem zjistil, že implementace SSBO na grafických kartách od AMD se v současnosti vyznačuje různými problémy a tudíž jsem řešil nevyřešitelné. Náročné bylo také vymyslet, jak vygenerovaná data použít pro z-fail algoritmus. To se nám ovšem ve finále úspěšně nepodařilo a ve výsledné aplikaci je tak použit algoritmus z-pass.
+Značnou část času jsem strávil nad komunikací mezi aplikací a compute shaderů. Později jsem zjistil, že implementace SSBO na grafických kartách od AMD se v současnosti vyznačuje různými problémy a tudíž jsem řešil nevyřešitelné. 
+
+Náročné bylo také vymyslet, jak vygenerovaná data použít pro z-fail algoritmus. To se nám ovšem ve finále úspěšně nepodařilo a ve výsledné aplikaci je tak použit algoritmus z-pass.
 
 \paragraph{Vít Hodes} Přijít na to, jak implementovat celočíselný "stencil buffer" s obecným přístupem ze shaderů. Po prozkoumání několika slepých cest se dospělo k řešení pomocí iimage2D a atomického sčítání. Taktéž implementovat stíny nad shadow volume, který se mi na AMD kartě negeneruje správně se moc nedá.
 
@@ -182,10 +186,10 @@ spíše znalostí než konkrétního kódu. Mimo vykreslovací část je kód po
 \paragraph{Vzhled vytvořeného řešení (40\%):} 
 Estetická kvalita nebyla cílem řešení.
 
-\paragraph{Využití zdrojů (80\%):} Byl využit pouze jeden literární zdroj, což je ovšem pro tento projekt dostatečné. Veškerý kód je původní a při jeho tvorbě byla značně využívána dokumentace OpenGL.
+\paragraph{Využití zdrojů (80\%):} 
+Byl využit pouze jeden literární zdroj, což je ovšem pro tento projekt dostatečné. Veškerý kód je původní a při jeho tvorbě byla značně využívána dokumentace OpenGL.
 
-\paragraph{Hospodaření s časem (70\%):} (rovnoměrné dotažení částí projektu,
-míra spěchu, chybějící části řešení, $\ldots$)
+\paragraph{Hospodaření s časem (70\%):} 
 Od počátku prací na projektu byl postup přiměřený a stabilní. Mohlo ovšem být věnováno více času implementaci algoritmu z-fail.
 
 \paragraph{Spolupráce v týmu (80\%):}
