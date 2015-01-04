@@ -7,8 +7,19 @@
 %---------------------------------------------------------------------------
 \section{Zadání}
 
-Implementace generovaní shadow volumes siluet pomocí compute shaderů a následné využití těchto siluet
-pro tvorbu stínů pomocí z-fail algoritmu.
+\begin{itemize}
+	\item Výpočet stínových těles
+		\begin{itemize}
+			\item Implementace na GPU
+			\item Implementace na CPU pro porovnání rychlosti
+		\end{itemize}
+	\item Vytvoření demonstrační aplikace
+		\begin{itemize}
+			\item Vykreslení scény se stíny pomocí patřičně modifikovaného z-fail algoritmu
+			\item Měření rychlosti
+			\item Různé vizualizační pomůcky
+		\end{itemize} vypočítaná stínová tělesa na jendoduché scéně
+\end{itemize}
 
 %---------------------------------------------------------------------------
 \section{Použité technologie}
@@ -34,13 +45,17 @@ pro tvorbu stínů pomocí z-fail algoritmu.
 
 %---------------------------------------------------------------------------
 \section{Použité zdroje}
-	\begin{itemize}
-		\item Stanford bunny
-	\end{itemize}
+\begin{itemize}
+	\item Stanford bunny
+	\item Utah teapot
+	\item Byungmoon Kim, Kihwan Kim, Greg Turk - Real Time Shadow of Transparent Casters Using Shadow Volume, 2007
+	\item Dokumentace OpenGL 4.3
+\end{itemize}
 %---------------------------------------------------------------------------
 \section{Nejdůležitější dosažené výsledky}
 
-Funguje generování shadow volume na Nvidia kartách.
+\subsection{Generování stínových těles a jejich patřičné vykreslení}
+
 
 %---------------------------------------------------------------------------
 \section{Ovládání vytvořeného programu}
@@ -50,6 +65,7 @@ Funguje generování shadow volume na Nvidia kartách.
 	\item Kolečko myši - Přiblížení a oddálení zobrazené scény.
 	\item Klávesa R - Přepíná autonomní otáčení zobrazené scény.
 	\item Klávesa T - Přepíná zobrazení vypočteného stínového tělesa.
+	\item Klávesa C - Přepíná mezi CPU a GPU implementací výpočtu.
 \end{itemize}
 
 %---------------------------------------------------------------------------
@@ -61,14 +77,13 @@ Využití image load/store v shaderech openGL pro vytvoření vlastního "stenci
 %---------------------------------------------------------------------------
 \section{Rozdělení práce v týmu}
 
-\paragraph{Zdeněk Biberle} Základ aplikace, compute shader pro výpočet stínového tělesa.
-\paragraph{Vít Hodes} Vykreslení scény za použití stínového tělesa, nahrávání modelů.
+\paragraph{Zdeněk Biberle} Základ aplikace, GPU výpočet stínového tělesa.
+\paragraph{Vít Hodes} Vykreslení scény za použití stínového tělesa, nahrávání modelů, CPU výpočet stínového tělesa.
 
 %---------------------------------------------------------------------------
 \section{Co bylo nejpracnější}
 
 \paragraph{Zdeněk Biberle}
-
 Značnou část času jsem strávil nad komunikací mezi aplikací a compute shaderů. Později jsem zjistil, že implementace SSBO na grafických kartách od AMD se v současnosti vyznačuje různými problémy a tudíž jsem řešil nevyřešitelné.
 
 \paragraph{Vít Hodes} Přijít na to, jak impementovat celočíselný "stencil buffer" s obecným přístupem ze shaderů. Po prozkoumání několika slepých cest se dospělo k řešení pomocí iimage2D a atomického sčítání. Taky implementovat stíny nad shadow volume, který se mi na AMD kartě negeneruje správně se moc nedá.
