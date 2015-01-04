@@ -1,5 +1,6 @@
-cube  0.000930626 gpu, 0.000195 cpu, 12 tris
-terrain 0.001302 gpu, 0.004973 cpu, 1458
-bunny 0.002095 gpu, 0.015015 cpu, 4 968 tris
-teapot 0.007135 gpu, 0.107191 cpu, 36096 tris
-teapot-big 0.0509742 gpu, 0.949182 cpu, 324 864 tris
+cube  0.000 930 626 gpu, 0.000 195 cpu, 12 tris, 0.210 zrychlení (či zpomalení :P)
+terrain 0.001 302 gpu, 0.004 973 cpu, 1 458 tris, 3.820 zrychlení
+bunny 0.002 095 gpu, 0.015 015 cpu, 4 968 tris, 7.167 zrychlení
+teapot 0.007 135 gpu, 0.107 191 cpu, 36 096 tris, 15.023 zrychlení
+teapot-big 0.050 974 2 gpu, 0.949 182 cpu, 324 864 tris, 18.620
+

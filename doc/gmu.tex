@@ -18,7 +18,8 @@
 			\item Vykreslení scény se stíny pomocí patřičně modifikovaného z-fail algoritmu
 			\item Měření rychlosti
 			\item Různé vizualizační pomůcky
-		\end{itemize} vypočítaná stínová tělesa na jendoduché scéně
+		\end{itemize}
+	\item Volba či vytvoření vhodných modelů pro demonstraci finálního výsledku
 \end{itemize}
 
 %---------------------------------------------------------------------------
@@ -32,9 +33,9 @@
 			\item Image load/store
 			\item Compute shadery
 		\end{itemize}
-	\item SDL2
-	\item GLM
-	\item glew
+	\item Knihovna SDL2
+	\item Knihovna GLM
+	\item Knihovna GLEW
 \end{itemize}
 
 \section{Technologie použité pro tvorbu}
@@ -54,6 +55,7 @@
 %---------------------------------------------------------------------------
 \section{Nejdůležitější dosažené výsledky}
 
+\subsection{Obecná funkčnost a funkcionalita aplikace}
 \begin{figure}[h]
 	\captionsetup{type=figure}
 	\includegraphics[width=\textwidth]{images/bunny.png}
@@ -79,6 +81,44 @@ Aplikace provádí generování stínového tělesa pro libovolný model na CPU 
 
 Zadaný algoritmus umožňuje generování stínových těles i pro non-manifold geometrii. Na obrázku \ref{fig:multiple-raised-planes} vidíme několik čtverců vrhajících korektní stín. Každý tento čtverec je složen pouze ze dvou trojúhelníků a není tedy možné na ně aplikovat běžný algoritmus generování stínových těles (tj. protažení hran mezi dvěma trojúhelníky, kde jeden je natočen ke světlu a druhý je od světla odvrácen) tak, aby dosáhl správného výsledku.
 
+\subsection{Zrychlení GPU implementace}
+
+Měřením času provádění CPU i GPU implementace při použití různých modelů jsme získali následující data:
+
+\begin{tabular}{l|c|c|c|c}
+	Název modelu   & Počet trojúhelníků  & CPU - čas  & GPU - čas & Zrychlení GPU oproti CPU \\
+	\hline
+	cube.obj       & 12      & 0,931 ms   & 0,195 ms  & 0,210 \\
+	terrain.obj    & 1458    & 4,973 ms   & 1,302 ms  & 3,820 \\ 
+	bunny.obj      & 4968    & 15,015 ms  & 2,095 ms  & 7,167 \\
+	teapot.obj     & 36096   & 0,107 s    & 7,135 ms  & 15,023 \\
+	teapot-big.obj & 324864  & 0,949 s    & 50,974 ms & 18,620 \\
+\end{tabular}
+
+Měření bylo provedeno na jediném počítači s grafickou kartou od společnosti nVidia, který jsme měli k dispozici. Jeho HW a SW vybavení bylo následující:
+\begin{itemize}
+	\item CPU: Intel Core i5-3230M, 2,60 GHz
+	\item GPU: nVidia 730M
+	\item RAM: 4GiB DDR3 1.6 GHz
+	\item Operační systém: Arch Linux, jádro linux-ck 3.18.1-8
+	\item Ovladač GPU: nvidia-ck, 343.36-3
+\end{itemize}
+
+Ze získaných výsledků vidíme očekávanou neefektivitu GPU implementace pro modely s opravdu nízkým počtem trojúhelníků, která je pravděpodobně způsobena dodatečnou režií. V případě většího počtu trojúhelníků již ovšem vidíme znatelné urychlení činnosti, zjevně stoupající s počtem trojúhelníků.
+
+\section{Obecný popis implementace algoritmu tvorby stínového tělesa}
+
+Algoritmus pro každý trojúhelník stínícího objektu provede následující:
+\begin{itemize}
+	\item Zkontroluje, zda je trojúhelník natočen ke světlu. Pokud ano, tak jej přenese do výstupního bufferu a zároveň přidá i patřičně upravenou verzi tohoto trjúhelníku na konci stínového tělesa.
+	\item Pro každou hranu tohoto trojúhelníku provede následující:
+		\begin{itemize}
+			\item Binárním vyhledáváním nalezne v pomocném poli pro vyhledávání trojúhelníků všechny ostatní trojúhelníky, které sdílí tuto hranu.
+			\item Zkontroluje, zda je tento trojúhelník vlastníkem této hrany (tj. neexistuje trojúhelník, který sdílí tuto hranu a má nižší index). Pokud tomu tak není, tak přejde na další hranu.
+			\item Projde nalezené přilehlé trojúhelníky a na základě jejich pozice v prostoru vůču světlu spočítá multiplicitu hrany. 
+			\item Pokud výsledná multiplicita není nulová, tak hranu protáhne a přenese do výstupního bufferu.
+		\end{itemize}
+\end{itemize}
 
 %---------------------------------------------------------------------------
 \section{Ovládání vytvořeného programu}
@@ -94,22 +134,21 @@ Zadaný algoritmus umožňuje generování stínových těles i pro non-manifold
 %---------------------------------------------------------------------------
 \section{Zvláštní použité znalosti}
 
-Použití OpenGL compute shaderů se různě liší od použití OpenCL či CUDA. To vyžadovalo získání dodatečných informací o jejich využívání a o komunikaci s němi.
-Využití image load/store v shaderech openGL pro vytvoření vlastního "stencil bufferu".
+Použití OpenGL compute shaderů se různě liší od použití OpenCL či CUDA. To vyžadovalo získání dodatečných informací o jejich využívání a o komunikaci s němi. Dále také využití image load/store v OpenGL shaderech pro vytvoření vlastního "stencil bufferu".
 
 %---------------------------------------------------------------------------
 \section{Rozdělení práce v týmu}
 
-\paragraph{Zdeněk Biberle} Základ aplikace, GPU výpočet stínového tělesa.
+\paragraph{Zdeněk Biberle} Základ aplikace, GPU výpočet stínového tělesa, CPU výpočet stínového tělesa, dokumentace.
 \paragraph{Vít Hodes} Vykreslení scény za použití stínového tělesa, nahrávání modelů, CPU výpočet stínového tělesa.
 
 %---------------------------------------------------------------------------
 \section{Co bylo nejpracnější}
 
 \paragraph{Zdeněk Biberle}
-Značnou část času jsem strávil nad komunikací mezi aplikací a compute shaderů. Později jsem zjistil, že implementace SSBO na grafických kartách od AMD se v současnosti vyznačuje různými problémy a tudíž jsem řešil nevyřešitelné.
+Značnou část času jsem strávil nad komunikací mezi aplikací a compute shaderů. Později jsem zjistil, že implementace SSBO na grafických kartách od AMD se v současnosti vyznačuje různými problémy a tudíž jsem řešil nevyřešitelné. Náročné bylo také vymyslet, jak vygenerovaná data použít pro z-fail algoritmus. To se nám ovšem ve finále úspěšně nepodařilo a ve výsledné aplikaci je tak použit algoritmus z-pass.
 
-\paragraph{Vít Hodes} Přijít na to, jak impementovat celočíselný "stencil buffer" s obecným přístupem ze shaderů. Po prozkoumání několika slepých cest se dospělo k řešení pomocí iimage2D a atomického sčítání. Taky implementovat stíny nad shadow volume, který se mi na AMD kartě negeneruje správně se moc nedá.
+\paragraph{Vít Hodes} Přijít na to, jak implementovat celočíselný "stencil buffer" s obecným přístupem ze shaderů. Po prozkoumání několika slepých cest se dospělo k řešení pomocí iimage2D a atomického sčítání. Taky implementovat stíny nad shadow volume, který se mi na AMD kartě negeneruje správně se moc nedá.
 
 %---------------------------------------------------------------------------
 \section{Zkušenosti získané řešením projektu}
@@ -118,58 +157,49 @@ Značnou část času jsem strávil nad komunikací mezi aplikací a compute sha
 \begin{itemize}
 	\item Compute shadery
 	\item SSBO
+	\item Image load/store
 \end{itemize}
 
 \paragraph{Vít Hodes}
 \begin{itemize}
 	\item Framebuffer object, color/depth attachment
-	\item v GLSL existují i shadow samplery a image samplery
-	\item image load/store, atomické operace obecně v shaderech
+	\item V GLSL existují i shadow samplery a image samplery
+	\item Image load/store, atomické operace obecně v shaderech
 	
 \end{itemize}
 
 %---------------------------------------------------------------------------
 \section{Autoevaluace}
 
-\paragraph{Technický návrh (70\%):} (analýza, dekompozice problému, volba
-vhodných prostředků, $\ldots$) 
+\paragraph{Technický návrh (75\%):}
+Technický návrh je slušný, problém byl vhodně rozložen na podproblémy, snad jen smaotný výpočet stínového tělesa mohl být dodatečně rozdělen na dvě části (jedna zpracovávající trojúhelníky a druhá zpracovávající hrany).
 
 
-\paragraph{Programování (70\%):} (kvalita a čitelnost kódu, spolehlivost běhu,
-obecnost řešení, znovupoužitelnost, $\ldots$)
+\paragraph{Programování (65\%):} 
 Vzhledem ke kratšímu rozsahu se moc neuplatnuje zapouzdření ve vykreslovací části. Znovupoužitelnost
-spíše znalostí než konkrétního kódu.
+spíše znalostí než konkrétního kódu. Mimo vykreslovací část je kód poměrně dobře čitelný.
 
-\paragraph{Vzhled vytvořeného řešení (40\%):} (uvěřitelnost zobrazení,
-estetická kvalita, vhled GUI, $\ldots$)
+\paragraph{Vzhled vytvořeného řešení (40\%):} 
 Estetická kvalita nebyla cílem řešení.
 
-\paragraph{Využití zdrojů (70\%):} (využití existujícího kódu a dat, využití
-literatury, $\ldots$)
-Bez dokumentací OpenGL API by tento projekt nevznikl.
+\paragraph{Využití zdrojů (80\%):} Byl využit pouze jeden literární zdroj, což je ovšem pro tento projekt dostatečné. Veškerý kód je původní a při jeho tvorbě byla značně využívána dokumentace OpenGL.
 
-\paragraph{Hospodaření s časem (50\%):} (rovnoměrné dotažení částí projektu,
+\paragraph{Hospodaření s časem (70\%):} (rovnoměrné dotažení částí projektu,
 míra spěchu, chybějící části řešení, $\ldots$)
-Přiměřené. 
+Od počátku prací na projektu byl postup přiměřený a stabilní. Mohlo ovšem být věnováno více času implementaci algoritmu z-fail.
 
-\paragraph{Spolupráce v týmu (80\%):} (komunikace, dodržování dohod, vzájemné
-spolehnutí, rovnoměrnost, $\ldots$)
-Komunikace dobrá.
+\paragraph{Spolupráce v týmu (80\%):}
+Komunikace a spolupráce byla z obou stran dobrá.
 
-\paragraph{Celkový dojem (70\%):} (pracnost, získané dovednosti, užitečnost,
-volba zadání, cokoliv, $\ldots$)
-Projekt byl zajímavý a potenciálně velmi užitečný. Škoda problémů s různými platformami(AMD x nVidia).
+\paragraph{Celkový dojem (70\%):}
+Projekt byl zajímavý a potenciálně velmi užitečný. Škoda problémů s různými platformami (AMD x nVidia).
 
 %---------------------------------------------------------------------------
 \section{Doporučení pro budoucí zadávání projektů}
 
-Témata projektů byla dostatečně pestrá, ale příště by mohla být zadána dříve.
+Témata projektů byla dostatečně pestrá, ale příště by mohla být zadána dříve. Ovšem na druhou stranu se řešení tohoto projektu příliš nepřekrývalo s jinými projekty v semestru.
 
 %---------------------------------------------------------------------------
-\section{Různé}
-
-Ještě něco by v dokumentaci mělo být? Napište to sem! Podle potřeby i založte
-novou kapitolu.
 
 \end{document}
 % vim:set ft=tex expandtab enc=utf8:
