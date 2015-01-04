@@ -255,6 +255,8 @@ int main(int argc, char** argv)
 							windowWidth = event.window.data1;
 							windowHeight = event.window.data2;
 							GLCALL(glViewport)(0, 0, windowWidth, windowHeight);
+							GLCALL(glDeleteTextures)(1, &stencilTextureID);
+							GLCALL(glGenTextures)(1, &stencilTextureID);
 							GLCALL(glBindTexture)(GL_TEXTURE_2D, stencilTextureID);
 							GLCALL(glTexImage2D)(GL_TEXTURE_2D, 0, GL_R32I, windowWidth, windowHeight, 0, GL_RED_INTEGER, GL_INT, nullptr);
 							GLCALL(glBindTexture)(GL_TEXTURE_2D, 0);
@@ -636,7 +638,10 @@ int main(int argc, char** argv)
 				GLCALL(glUniformMatrix3fv)(mvNormLocation, 1, GL_FALSE, glm::value_ptr(mvNormMat));
 				GLCALL(glUniformMatrix4fv)(pLocation, 1, GL_FALSE, glm::value_ptr(pMat));
 			
-				GLCALL(glBindBuffer)(GL_ARRAY_BUFFER, shadowVolumeBuffer);
+				if (CPU)
+					glBindBuffer(GL_ARRAY_BUFFER, shadowVolumeBufferCpu);
+				else
+					glBindBuffer(GL_ARRAY_BUFFER, shadowVolumeBuffer);
 			
 				auto numArrays = 2;
 			
