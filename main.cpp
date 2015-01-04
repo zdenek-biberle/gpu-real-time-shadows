@@ -715,8 +715,10 @@ int main(int argc, char** argv)
 
 			
 					glDrawArrays(GL_TRIANGLES, 0, shadowVolumeInfo.triCount * 3);
+
 					for (int i = 0; i < numArrays; i++)
 						glDisableVertexAttribArray(i);
+
 					glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 				glBindVertexArray(0);
@@ -775,8 +777,10 @@ int main(int argc, char** argv)
 						glUniformMatrix3fv(mvNormLocation, 1, GL_FALSE, glm::value_ptr(mvNormMat));
 						glDrawElements(GL_TRIANGLES, (GLsizei)modelInfo->indexCount, GL_UNSIGNED_INT, reinterpret_cast<void*>(modelInfo->baseIndex * sizeof(GLuint)));
 					}
+
 					for (int i = 0; i < numArrays; i++)
 						glDisableVertexAttribArray(i);
+
 					glBindBuffer(GL_ARRAY_BUFFER, 0);
 					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
@@ -802,8 +806,6 @@ int main(int argc, char** argv)
 					glVertexAttribIPointer(1u, 1, GL_INT, (GLsizei) sizeof(ShadowVolumeVertex), reinterpret_cast<void*>(offsetof(ShadowVolumeVertex, multiplicity)));
 
 
-					//for (int i = 0; i < numArrays; i++)
-					//	glDisableVertexAttribArray(i);
 
 						glEnable(GL_BLEND);
 						glBlendFunc(GL_SRC_ALPHA, GL_ONE);
