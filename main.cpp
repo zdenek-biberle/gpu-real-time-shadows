@@ -623,6 +623,21 @@ int main(int argc, char** argv)
 
 				glBindVertexArray(depthVAO);
 
+				glBindBuffer(GL_ARRAY_BUFFER, vbo);
+				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+
+				numArrays = 1;
+
+				for (int i = 0; i < numArrays; i++)			//use vao.. this is silly
+					glEnableVertexAttribArray(i);
+
+				// pozice
+				glVertexAttribPointer(0u, 3, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, _x)));
+
+				//for (int i = 0; i < numArrays; i++)
+				//	glDisableVertexAttribArray(i);
+
+
 				glDisable(GL_BLEND);
 				glEnable(GL_DEPTH_TEST);
 				glDepthMask(GL_TRUE);
@@ -646,7 +661,8 @@ int main(int argc, char** argv)
 						glDrawElements(GL_TRIANGLES, (GLsizei)modelInfo->indexCount, GL_UNSIGNED_INT, reinterpret_cast<void*>(modelInfo->baseIndex * sizeof(GLuint)));
 					}
 
-	
+					glBindBuffer(GL_ARRAY_BUFFER, 0);
+					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 				glBindVertexArray(0);
 
 			glUseProgram(0);
@@ -686,6 +702,19 @@ int main(int argc, char** argv)
 
 				glBindVertexArray(sceneVAO);
 
+				glBindBuffer(GL_ARRAY_BUFFER, vbo);
+				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+
+				numArrays = 2;
+
+				for (int i = 0; i < numArrays; i++)
+					glEnableVertexAttribArray(i);
+
+				// pozice
+				glVertexAttribPointer(0u, 3, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, _x)));
+				// normala
+				glVertexAttribPointer(1u, 3, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, _nx)));
+
 					glDepthMask(GL_TRUE);
 					glDepthFunc(GL_LESS);
 					glClear(GL_DEPTH_BUFFER_BIT); 
@@ -719,6 +748,9 @@ int main(int argc, char** argv)
 						glUniformMatrix3fv(mvNormLocation, 1, GL_FALSE, glm::value_ptr(mvNormMat));
 						glDrawElements(GL_TRIANGLES, (GLsizei)modelInfo->indexCount, GL_UNSIGNED_INT, reinterpret_cast<void*>(modelInfo->baseIndex * sizeof(GLuint)));
 					}
+
+					glBindBuffer(GL_ARRAY_BUFFER, 0);
+					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
 				glBindVertexArray(0);
 
