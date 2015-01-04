@@ -1,6 +1,7 @@
 #version 430
 
 uniform vec3 lightDir;
+uniform vec3 color;
 layout(r32i, binding = 0) uniform iimage2D stencilTexture;
 
 in VertexOutput
@@ -21,7 +22,7 @@ void main()
 	vec3 light = (number > 0 ? 0 : 1) * diffuse + ambient;
 
 	outColor.z = 1.0;
-	outColor.xyz = vec3(0.5, 0.5, 1.0) * light;
+	outColor.xyz = color * light;
 }
 
 

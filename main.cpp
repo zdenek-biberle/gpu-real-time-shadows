@@ -96,7 +96,9 @@ int main(int argc, char** argv)
 	std::vector<GLuint> indices;
 
 	auto environmentModel = loadModel(environmentModelFilename, vertices, indices);
+	environmentModel.color = glm::vec3(0.5, 0.5, 1.0);
 	auto shadowModel = loadModel(shadowModelFilename, vertices, indices);
+	shadowModel.color = glm::vec3(0.5, 1.0, 0.5);
 
 	std::cout << "Zjednodušujeme stínící model" << std::endl;
 	
@@ -578,6 +580,7 @@ int main(int argc, char** argv)
 			mvLocation = glGetUniformLocation(lightingProgram.id, "mvMat");
 			auto mvNormLocation = glGetUniformLocation(lightingProgram.id, "mvNormMat");
 			pLocation = glGetUniformLocation(lightingProgram.id, "pMat");
+			auto colorLocation = GLCALL(glGetUniformLocation)(lightingProgram.id, "color");
 
 			glBindImageTexture(0, stencilTextureID, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32I);
 
@@ -610,6 +613,7 @@ int main(int argc, char** argv)
 				auto mvNormMat = glm::transpose(glm::inverse(glm::mat3(mvMat)));
 				glUniformMatrix4fv(mvLocation, 1, GL_FALSE, glm::value_ptr(mvMat));
 				glUniformMatrix3fv(mvNormLocation, 1, GL_FALSE, glm::value_ptr(mvNormMat));
+				glUniform3fv(colorLocation, 1, glm::value_ptr(modelInfo->color));
 				glDrawElements(GL_TRIANGLES, (GLsizei)modelInfo->indexCount, GL_UNSIGNED_INT, reinterpret_cast<void*>(modelInfo->baseIndex * sizeof(GLuint)));
 			}
 

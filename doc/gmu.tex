@@ -54,7 +54,30 @@
 %---------------------------------------------------------------------------
 \section{Nejdůležitější dosažené výsledky}
 
-\subsection{Generování stínových těles a jejich patřičné vykreslení}
+\begin{figure}[h]
+	\captionsetup{type=figure}
+	\includegraphics[width=\textwidth]{images/bunny.png}
+	\captionof{figure}{Králíček vrhající stín na terén}
+\end{figure}
+
+\begin{figure}[h]
+	\captionsetup{type=figure}
+	\includegraphics[width=\textwidth]{images/bunny-volume.png}
+	\captionof{figure}{Králíček a jeho stínové těleso}
+\end{figure}
+
+Aplikace provádí generování stínového tělesa pro libovolný model na CPU i na GPU a scénu poté zobrazuje s jeho použitím. Dodatečně umožňuje i zobrazení samotného stínového tělesa. Ovšem dle našich zkušeností nefunguje generování stínového tělesa na grafických akrtách od společnosti AMD.
+
+\subsection{Generování stínových těles i pro non-manifold geometrii}
+
+\begin{figure}[h]
+	\captionsetup{type=figure}
+	\includegraphics[width=\textwidth]{images/multiple-raised-planes.png}
+	\captionof{figure}{Geometrie složená z několika non-manifold částí vrhající stíny}
+	\label{fig:multiple-raised-planes}
+\end{figure}
+
+Zadaný algoritmus umožňuje generování stínových těles i pro non-manifold geometrii. Na obrázku \ref{fig:multiple-raised-planes} vidíme několik čtverců vrhajících korektní stín. Každý tento čtverec je složen pouze ze dvou trojúhelníků a není tedy možné na ně aplikovat běžný algoritmus generování stínových těles (tj. protažení hran mezi dvěma trojúhelníky, kde jeden je natočen ke světlu a druhý je od světla odvrácen) tak, aby dosáhl správného výsledku.
 
 
 %---------------------------------------------------------------------------
@@ -65,7 +88,7 @@
 	\item Kolečko myši - Přiblížení a oddálení zobrazené scény.
 	\item Klávesa R - Přepíná autonomní otáčení zobrazené scény.
 	\item Klávesa T - Přepíná zobrazení vypočteného stínového tělesa.
-	\item Klávesa C - Přepíná mezi CPU a GPU implementací výpočtu.
+	\item Klávesa C - Přepíná mezi CPU a GPU implementací výpočtu stínového tělesa.
 \end{itemize}
 
 %---------------------------------------------------------------------------
@@ -135,7 +158,7 @@ Komunikace dobrá.
 
 \paragraph{Celkový dojem (70\%):} (pracnost, získané dovednosti, užitečnost,
 volba zadání, cokoliv, $\ldots$)
-Projekt byl zajímavý a potenciálně velmi užitečný. Škoda problémů s různými platformami(AMD x Nvidia).
+Projekt byl zajímavý a potenciálně velmi užitečný. Škoda problémů s různými platformami(AMD x nVidia).
 
 %---------------------------------------------------------------------------
 \section{Doporučení pro budoucí zadávání projektů}
