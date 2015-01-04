@@ -1,4 +1,5 @@
 cube  0.000930626 gpu, 0.000195 cpu, 12 tris
+terrain 0.001302 gpu, 0.004973 cpu, 1458
 bunny 0.002095 gpu, 0.015015 cpu, 4 968 tris
 teapot 0.007135 gpu, 0.107191 cpu, 36096 tris
 teapot-big 0.0509742 gpu, 0.949182 cpu, 324 864 tris
