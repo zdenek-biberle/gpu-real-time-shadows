@@ -51,6 +51,7 @@ ShadowVolumeVertex::ShadowVolumeVertex(float x, float y, float z, int multiplici
 	x(x),
 	y(y),
 	z(z),
+	w(1.0f),
 	multiplicity(multiplicity),
 	isCap(isCap)
 {}
@@ -59,6 +60,7 @@ ShadowVolumeVertex::ShadowVolumeVertex(const glm::vec3& point, int multiplicity,
 	x(point.x),
 	y(point.y),
 	z(point.z),
+	w(1.0f),
 	multiplicity(multiplicity),
 	isCap(isCap)
 {}

@@ -80,7 +80,7 @@ unsigned doEdgeLookup(const std::vector<EdgeLookupNode>& edgeLookup, unsigned ed
 		else break;
 	}
 
-	return midIdx + 1;
+	return midIdx;
 }
 
 ShadowVolumeComputationInfo compute(
@@ -110,12 +110,12 @@ ShadowVolumeComputationInfo compute(
 			glm::vec3 a1 = position(inVertices[aidx[1]]);
 			glm::vec3 a2 = position(inVertices[aidx[2]]);
 
-			glm::vec3 extrusionVec = extrusionDistance * normalize(lightDir);
+			glm::vec3 extrusionVec = extrusionDistance * glm::normalize(lightDir);
 
 			if (isFrontFacing(lightDir, a0, a1, a2))
 			{
-				emitTriangle(outVertices, a0, a1, a2, -2, indexCount);
-				emitTriangle(outVertices, a0 + extrusionVec, a2 + extrusionVec, a1 + extrusionVec, -2, indexCount);
+				emitTriangle(outVertices, a0, a1, a2, -2, 1);
+				emitTriangle(outVertices, a0 + extrusionVec, a2 + extrusionVec, a1 + extrusionVec, -2, 1);
 				triCount += 2;
 			}
 

@@ -169,11 +169,13 @@ int main(int argc, char** argv)
 	GLuint vbo;
 	GLuint ibo;
 	GLuint shadowVolumeBuffer;
+	GLuint shadowVolumeBufferCpu;
 	GLuint shadowVolumeComputationInfo;
 
 	glGenBuffers(1, &vbo);
 	GLCALL(glGenBuffers)(1, &ibo);
 	GLCALL(glGenBuffers)(1, &shadowVolumeBuffer);
+	GLCALL(glGenBuffers)(1, &shadowVolumeBufferCpu);
 	GLCALL(glGenBuffers)(1, &shadowVolumeComputationInfo);
 		
 	GLCALL(glBindBuffer)(GL_ARRAY_BUFFER, vbo);
@@ -253,6 +255,8 @@ int main(int argc, char** argv)
 							windowWidth = event.window.data1;
 							windowHeight = event.window.data2;
 							GLCALL(glViewport)(0, 0, windowWidth, windowHeight);
+							GLCALL(glDeleteTextures)(1, &stencilTextureID);
+							GLCALL(glGenTextures)(1, &stencilTextureID);
 							GLCALL(glBindTexture)(GL_TEXTURE_2D, stencilTextureID);
 							GLCALL(glTexImage2D)(GL_TEXTURE_2D, 0, GL_R32I, windowWidth, windowHeight, 0, GL_RED_INTEGER, GL_INT, nullptr);
 							GLCALL(glBindTexture)(GL_TEXTURE_2D, 0);
@@ -424,16 +428,10 @@ int main(int argc, char** argv)
 						shadowVolumeVertices
 					);
 					
-					std::cout << "Máme " << shadowVolumeInfo.triCount << " trianglů" << std::endl;
-					for (unsigned i = 0; i < shadowVolumeInfo.triCount; i++)
-					{
-						//std::cout << shadowVolumeVertices.at(i).x << ", " << shadowVolumeVertices.at(i).y << ", " << shadowVolumeVertices.at(i).z << ": " << shadowVolumeVertices.at(i).multiplicity << ", " << shadowVolumeVertices.at(i).isCap << std::endl;
-					}
-					
-					glBindBuffer(GL_ARRAY_BUFFER, shadowVolumeBuffer);
-					glBufferData(GL_ARRAY_BUFFER, shadowVolumeVertices.size() * sizeof(ShadowVolumeVertex), nullptr, GL_DYNAMIC_DRAW);
-					glBufferData(GL_ARRAY_BUFFER, shadowVolumeVertices.size() * sizeof(ShadowVolumeVertex), shadowVolumeVertices.data(), GL_DYNAMIC_DRAW);
-					glBindBuffer(GL_ARRAY_BUFFER, 0);
+					GLCALL(glBindBuffer)(GL_ARRAY_BUFFER, shadowVolumeBufferCpu);
+					GLCALL(glBufferData)(GL_ARRAY_BUFFER, shadowVolumeVertices.size() * sizeof(ShadowVolumeVertex), nullptr, GL_STREAM_DRAW);
+					GLCALL(glBufferSubData)(GL_ARRAY_BUFFER, 0, shadowVolumeVertices.size() * sizeof(ShadowVolumeVertex), shadowVolumeVertices.data());
+					GLCALL(glBindBuffer)(GL_ARRAY_BUFFER, 0);
 				}
 				else if (volumeComputationProgram != 0)
 				{
@@ -441,7 +439,7 @@ int main(int argc, char** argv)
 					
 					GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, shadowVolumeComputationInfo);
 					GLCALL(glBufferData)(GL_SHADER_STORAGE_BUFFER, sizeof(ShadowVolumeComputationInfo), nullptr, GL_STREAM_READ);
-					GLCALL(glBufferData)(GL_SHADER_STORAGE_BUFFER, sizeof(ShadowVolumeComputationInfo), &shadowVolumeInfo, GL_STREAM_READ);
+					GLCALL(glBufferSubData)(GL_SHADER_STORAGE_BUFFER, 0, sizeof(ShadowVolumeComputationInfo), &shadowVolumeInfo);
 					GLCALL(glBindBuffer)(GL_SHADER_STORAGE_BUFFER, 0);
 					
 					auto lightDirLocation = glGetUniformLocation(volumeComputationProgram, "lightDir");
@@ -533,7 +531,11 @@ int main(int argc, char** argv)
 			glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);  //just in case
 			glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
-			glBindBuffer(GL_ARRAY_BUFFER, shadowVolumeBuffer); //bind output of compute shader as array buffer
+			if (CPU)
+				glBindBuffer(GL_ARRAY_BUFFER, shadowVolumeBufferCpu); //bind output of cpu impl as array buffer
+			else
+				glBindBuffer(GL_ARRAY_BUFFER, shadowVolumeBuffer); //bind output of compute shader as array buffer
+			
 			
 			glBindImageTexture(0, stencilTextureID, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32I);
 
@@ -636,7 +638,10 @@ int main(int argc, char** argv)
 				GLCALL(glUniformMatrix3fv)(mvNormLocation, 1, GL_FALSE, glm::value_ptr(mvNormMat));
 				GLCALL(glUniformMatrix4fv)(pLocation, 1, GL_FALSE, glm::value_ptr(pMat));
 			
-				GLCALL(glBindBuffer)(GL_ARRAY_BUFFER, shadowVolumeBuffer);
+				if (CPU)
+					glBindBuffer(GL_ARRAY_BUFFER, shadowVolumeBufferCpu);
+				else
+					glBindBuffer(GL_ARRAY_BUFFER, shadowVolumeBuffer);
 			
 				auto numArrays = 2;
 			
