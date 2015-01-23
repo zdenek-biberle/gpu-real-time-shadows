@@ -187,10 +187,10 @@ int main(int argc, char** argv)
 
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, shadowVolumeBuffer);
 	// *7, protože pro každý trojúhelník můžeme potenciálně vygenerovat až 7 dalších trojúhelníků
-	glBufferData(GL_SHADER_STORAGE_BUFFER, shadowModel.indexCount * sizeof(ShadowVolumeVertex) * 7, nullptr, GL_DYNAMIC_COPY);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, shadowModel.indexCount * sizeof(ShadowVolumeVertex) * 8, nullptr, GL_DYNAMIC_COPY);
 
 
-	//set up vao for shadow volume display gpu
+	//set up vao for shadow volume display - from gpu
 	GLuint shadowVolumeVAO;
 	glGenVertexArrays(1, &shadowVolumeVAO);
 	glBindVertexArray(shadowVolumeVAO);
@@ -212,7 +212,7 @@ int main(int argc, char** argv)
 
 	glBindVertexArray(0);
 
-	//set up vao for shadow volume display cpu
+	//set up vao for shadow volume display - from cpu
 	GLuint shadowVolumeVAO_CPU;
 	glGenVertexArrays(1, &shadowVolumeVAO_CPU);
 	glBindVertexArray(shadowVolumeVAO_CPU);
@@ -271,7 +271,7 @@ int main(int argc, char** argv)
 
 		numArrays = 1;
 
-		for (int i = 0; i < numArrays; i++)			//use vao.. this is silly
+		for (int i = 0; i < numArrays; i++)	
 			glEnableVertexAttribArray(i);
 
 		// pozice
@@ -576,16 +576,34 @@ int main(int argc, char** argv)
 						);
 
 					glBindBuffer(GL_ARRAY_BUFFER, shadowVolumeBufferCpu);
-						glBufferData(GL_ARRAY_BUFFER, shadowVolumeVertices.size() * sizeof(ShadowVolumeVertex), shadowVolumeVertices.data(), GL_STREAM_DRAW);
+					glBufferData(GL_ARRAY_BUFFER, shadowVolumeVertices.size() * sizeof(ShadowVolumeVertex), shadowVolumeVertices.data(), GL_STREAM_DRAW);
 					//glBufferSubData(GL_ARRAY_BUFFER, 0, shadowVolumeVertices.size() * sizeof(ShadowVolumeVertex), shadowVolumeVertices.data());
 					glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+					/* //nope.. takto to asi nepujde
+					glBindBuffer(GL_ARRAY_BUFFER, shadowVolumeBufferCpu);
+						std::vector<ShadowVolumeVertex> readback;
+
+						GLint size;
+						glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
+						readback.reserve(size);
+
+						glGetBufferSubData(GL_ARRAY_BUFFER, 0, size, &readback);
+
+					glBindBuffer(GL_ARRAY_BUFFER, 0);
+					std::cout << "CPU\n";
+
+					for (auto item : readback){
+						std::cout << item.x << " " << item.y << " " << item.z << "  " << item.multiplicity;
+					}
+					std::cout << std::endl;*/
 				}
 				else if (volumeComputationProgram != 0)
 				{
 					glUseProgram(volumeComputationProgram);
 
 					glBindBuffer(GL_SHADER_STORAGE_BUFFER, shadowVolumeComputationInfo);
-					glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(ShadowVolumeComputationInfo), &shadowVolumeInfo, GL_STREAM_READ);
+					glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(ShadowVolumeComputationInfo), &shadowVolumeInfo, GL_STREAM_READ);  //nulovani
 					//glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(ShadowVolumeComputationInfo), &shadowVolumeInfo);
 					glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
@@ -604,25 +622,49 @@ int main(int argc, char** argv)
 					auto indexCountLocation = glGetUniformLocation(volumeComputationProgram, "indexCount");
 					glUniform1ui(indexCountLocation, simplifiedModel.indexCount);
 
-					if (!CPU){
-
+					
 						glDispatchCompute((shadowModel.indexCount / 3 + 127) / 128, 1, 1);
 						glMemoryBarrier(GL_ALL_BARRIER_BITS);
-					}
+						
 					
 
 					for (unsigned i = 0; i < 5; i++)
 						glBindBufferBase(GL_SHADER_STORAGE_BUFFER, i, 0);
 
-					glBindBuffer(GL_SHADER_STORAGE_BUFFER, shadowVolumeComputationInfo);
-					glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(ShadowVolumeComputationInfo), &shadowVolumeInfo);
+					glBindBuffer(GL_SHADER_STORAGE_BUFFER, shadowVolumeComputationInfo);		//hadam ze pro ctverec by to melo byt 12 a ne 6
+					glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(ShadowVolumeComputationInfo), &shadowVolumeInfo);	//precteni nove hodnoty
 					glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
 					glUseProgram(0);
+
+					
+
+					/*
+					glBindBuffer(GL_ARRAY_BUFFER, shadowVolumeBuffer);
+					std::vector<ShadowVolumeVertex> readback;
+					
+					GLint size;
+					glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
+					readback.reserve(size);
+
+						glGetBufferSubData(GL_ARRAY_BUFFER, 0, size, &readback);
+
+						glBindBuffer(GL_ARRAY_BUFFER, 0);
+						std::cout << "GPU\n";
+					for (auto item : readback){
+						std::cout << item.x << " " << item.y << " " << item.z << "  " << item.multiplicity;
+					}
+					std::cout << std::endl;
+					*/
+
 				}
 
 				frameComputationTickCounter += SDL_GetTicks() - computationStartTicks;
 			}
+
+
+
+
 
 			//this bit should clear stencil texture between runs
 			GLint clearColor[] = { 0 };
