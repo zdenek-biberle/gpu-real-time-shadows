@@ -23,7 +23,7 @@ struct ModelInfo
 	glm::mat4 transform;
 };
 
-static_assert(sizeof(ShadowVolumeVertex) == sizeof(float) * 8, "Velikost struktury ShadowVolumeVertex neni 8 floatu");
+//static_assert(sizeof(ShadowVolumeVertex) == sizeof(float) * 8, "Velikost struktury ShadowVolumeVertex neni 8 floatu");
 
 // loaduje vertexy, normaly a uvcka
 ModelInfo loadModel(

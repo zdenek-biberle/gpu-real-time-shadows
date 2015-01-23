@@ -91,6 +91,7 @@ int main(int argc, char** argv)
 		std::cerr << "Není k dispozici debug output" << std::endl;
 	}
 	
+	
 	std::cout << "Loadujeme modely" << std::endl;
 	std::vector<Vertex> vertices;
 	std::vector<GLuint> indices;
@@ -189,7 +190,7 @@ int main(int argc, char** argv)
 	glBufferData(GL_SHADER_STORAGE_BUFFER, shadowModel.indexCount * sizeof(ShadowVolumeVertex) * 7, nullptr, GL_DYNAMIC_COPY);
 
 
-	//set up vao for shadow volume display
+	//set up vao for shadow volume display gpu
 	GLuint shadowVolumeVAO;
 	glGenVertexArrays(1, &shadowVolumeVAO);
 	glBindVertexArray(shadowVolumeVAO);
@@ -207,8 +208,27 @@ int main(int argc, char** argv)
 		glVertexAttribIPointer(1u, 1, GL_INT, (GLsizei) sizeof(ShadowVolumeVertex), reinterpret_cast<void*>(offsetof(ShadowVolumeVertex, multiplicity)));
 
 
-		//for (int i = 0; i < numArrays; i++)
-		//	glDisableVertexAttribArray(i);
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+	glBindVertexArray(0);
+
+	//set up vao for shadow volume display cpu
+	GLuint shadowVolumeVAO_CPU;
+	glGenVertexArrays(1, &shadowVolumeVAO_CPU);
+	glBindVertexArray(shadowVolumeVAO_CPU);
+
+		glBindBuffer(GL_ARRAY_BUFFER, shadowVolumeBufferCpu);
+
+			numArrays = 2;
+
+			for (int i = 0; i < numArrays; i++)
+				glEnableVertexAttribArray(i);
+
+			// pozice
+			glVertexAttribPointer(0u, 4, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(ShadowVolumeVertex), reinterpret_cast<void*>(offsetof(ShadowVolumeVertex, x)));
+			// multiplicita
+			glVertexAttribIPointer(1u, 1, GL_INT, (GLsizei) sizeof(ShadowVolumeVertex), reinterpret_cast<void*>(offsetof(ShadowVolumeVertex, multiplicity)));
+
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 
@@ -233,9 +253,7 @@ int main(int argc, char** argv)
 			// normala
 			glVertexAttribPointer(1u, 3, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, _nx)));
 
-			
-			//for (int i = 0; i < numArrays; i++)
-			//	glDisableVertexAttribArray(i);
+
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
@@ -259,8 +277,7 @@ int main(int argc, char** argv)
 		// pozice
 		glVertexAttribPointer(0u, 3, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, _x)));
 
-		//for (int i = 0; i < numArrays; i++)
-		//	glDisableVertexAttribArray(i);
+
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
@@ -274,7 +291,6 @@ int main(int argc, char** argv)
 
 	glGenVertexArrays(1, &stencilVAO_CPU);
 	glGenVertexArrays(1, &stencilVAO_GPU);
-
 
 	glBindVertexArray(stencilVAO_CPU);
 
@@ -290,9 +306,6 @@ int main(int argc, char** argv)
 			// multiplicita
 			glVertexAttribIPointer(1u, 1, GL_INT, (GLsizei) sizeof(ShadowVolumeVertex), reinterpret_cast<void*>(offsetof(ShadowVolumeVertex, multiplicity)));
 
-
-			//for (int i = 0; i < numArrays; i++)
-			//	glDisableVertexAttribArray(i);
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 	
@@ -312,10 +325,6 @@ int main(int argc, char** argv)
 		glVertexAttribPointer(0u, 4, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(ShadowVolumeVertex), reinterpret_cast<void*>(offsetof(ShadowVolumeVertex, x)));
 		// multiplicita
 		glVertexAttribIPointer(1u, 1, GL_INT, (GLsizei) sizeof(ShadowVolumeVertex), reinterpret_cast<void*>(offsetof(ShadowVolumeVertex, multiplicity)));
-
-
-		//for (int i = 0; i < numArrays; i++)
-		//	glDisableVertexAttribArray(i);
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 
@@ -567,8 +576,8 @@ int main(int argc, char** argv)
 						);
 
 					glBindBuffer(GL_ARRAY_BUFFER, shadowVolumeBufferCpu);
-					glBufferData(GL_ARRAY_BUFFER, shadowVolumeVertices.size() * sizeof(ShadowVolumeVertex), nullptr, GL_STREAM_DRAW);
-					glBufferSubData(GL_ARRAY_BUFFER, 0, shadowVolumeVertices.size() * sizeof(ShadowVolumeVertex), shadowVolumeVertices.data());
+						glBufferData(GL_ARRAY_BUFFER, shadowVolumeVertices.size() * sizeof(ShadowVolumeVertex), shadowVolumeVertices.data(), GL_STREAM_DRAW);
+					//glBufferSubData(GL_ARRAY_BUFFER, 0, shadowVolumeVertices.size() * sizeof(ShadowVolumeVertex), shadowVolumeVertices.data());
 					glBindBuffer(GL_ARRAY_BUFFER, 0);
 				}
 				else if (volumeComputationProgram != 0)
@@ -576,8 +585,8 @@ int main(int argc, char** argv)
 					glUseProgram(volumeComputationProgram);
 
 					glBindBuffer(GL_SHADER_STORAGE_BUFFER, shadowVolumeComputationInfo);
-					glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(ShadowVolumeComputationInfo), nullptr, GL_STREAM_READ);
-					glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(ShadowVolumeComputationInfo), &shadowVolumeInfo);
+					glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(ShadowVolumeComputationInfo), &shadowVolumeInfo, GL_STREAM_READ);
+					//glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(ShadowVolumeComputationInfo), &shadowVolumeInfo);
 					glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
 					auto lightDirLocation = glGetUniformLocation(volumeComputationProgram, "lightDir");
@@ -596,9 +605,11 @@ int main(int argc, char** argv)
 					glUniform1ui(indexCountLocation, simplifiedModel.indexCount);
 
 					if (!CPU){
+
 						glDispatchCompute((shadowModel.indexCount / 3 + 127) / 128, 1, 1);
+						glMemoryBarrier(GL_ALL_BARRIER_BITS);
 					}
-					glMemoryBarrier(GL_ALL_BARRIER_BITS);
+					
 
 					for (unsigned i = 0; i < 5; i++)
 						glBindBufferBase(GL_SHADER_STORAGE_BUFFER, i, 0);
@@ -625,20 +636,9 @@ int main(int argc, char** argv)
 
 			glBindVertexArray(depthVAO);
 
-			glBindBuffer(GL_ARRAY_BUFFER, vbo);
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);	//
 
-			numArrays = 1;
-
-			for (int i = 0; i < numArrays; i++)			//use vao.. this is silly
-				glEnableVertexAttribArray(i);
-
-			// pozice
-			glVertexAttribPointer(0u, 3, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, _x)));
-
-
-
-
+		
 			glDisable(GL_BLEND);
 			glEnable(GL_DEPTH_TEST);
 			glDepthMask(GL_TRUE);
@@ -661,9 +661,7 @@ int main(int argc, char** argv)
 				glUniformMatrix4fv(pLocation, 1, GL_FALSE, glm::value_ptr(pMat));
 				glDrawElements(GL_TRIANGLES, (GLsizei)modelInfo->indexCount, GL_UNSIGNED_INT, reinterpret_cast<void*>(modelInfo->baseIndex * sizeof(GLuint)));
 			}
-			for (int i = 0; i < numArrays; i++)
-				glDisableVertexAttribArray(i);
-			glBindBuffer(GL_ARRAY_BUFFER, 0);
+
 			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 			glBindVertexArray(0);
 
@@ -674,30 +672,13 @@ int main(int argc, char** argv)
 
 			if (CPU){
 				glBindVertexArray(stencilVAO_CPU);
-				glBindBuffer(GL_ARRAY_BUFFER, shadowVolumeBufferCpu); //bind output of cpu impl as array buffer
-			}
-			else{
+
+			} else {
 				glBindVertexArray(stencilVAO_GPU);
-				glBindBuffer(GL_ARRAY_BUFFER, shadowVolumeBuffer); //bind output of compute shader as array buffer
 				
 			}
 
-			numArrays = 2;
-
-			for (int i = 0; i < numArrays; i++)
-				glEnableVertexAttribArray(i);
-
-			// pozice vcetne w -> 4 floaty
-			glVertexAttribPointer(0u, 4, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(ShadowVolumeVertex), reinterpret_cast<void*>(offsetof(ShadowVolumeVertex, x)));
-			// multiplicita
-			glVertexAttribIPointer(1u, 1, GL_INT, (GLsizei) sizeof(ShadowVolumeVertex), reinterpret_cast<void*>(offsetof(ShadowVolumeVertex, multiplicity)));
-
-
-			//for (int i = 0; i < numArrays; i++)
-			//	glDisableVertexAttribArray(i);
-
-
-
+			
 
 			glDepthMask(GL_FALSE);
 			glDepthFunc(GL_LESS);
@@ -716,10 +697,6 @@ int main(int argc, char** argv)
 			
 					glDrawArrays(GL_TRIANGLES, 0, shadowVolumeInfo.triCount * 3);
 
-					for (int i = 0; i < numArrays; i++)
-						glDisableVertexAttribArray(i);
-
-					glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 				glBindVertexArray(0);
 
@@ -731,19 +708,9 @@ int main(int argc, char** argv)
 
 				glBindVertexArray(sceneVAO);
 
-				glBindBuffer(GL_ARRAY_BUFFER, vbo);
 				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
 
-				numArrays = 2;
-
-				for (int i = 0; i < numArrays; i++)
-					glEnableVertexAttribArray(i);
-
-				// pozice
-				glVertexAttribPointer(0u, 3, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, _x)));
-				// normala
-				glVertexAttribPointer(1u, 3, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, _nx)));
-
+				
 					glDepthMask(GL_TRUE);
 					glDepthFunc(GL_LESS);
 					glClear(GL_DEPTH_BUFFER_BIT); 
@@ -778,10 +745,7 @@ int main(int argc, char** argv)
 						glDrawElements(GL_TRIANGLES, (GLsizei)modelInfo->indexCount, GL_UNSIGNED_INT, reinterpret_cast<void*>(modelInfo->baseIndex * sizeof(GLuint)));
 					}
 
-					for (int i = 0; i < numArrays; i++)
-						glDisableVertexAttribArray(i);
-
-					glBindBuffer(GL_ARRAY_BUFFER, 0);
+					
 					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
 				glBindVertexArray(0);
@@ -792,19 +756,20 @@ int main(int argc, char** argv)
 			{
 				glUseProgram(volumeVisualizationProgram);
 
-					glBindVertexArray(shadowVolumeVAO);
-					glBindBuffer(GL_ARRAY_BUFFER, shadowVolumeBuffer);
 
-					auto numArrays = 2;
+					if (CPU){
+						glBindVertexArray(shadowVolumeVAO_CPU);
 
-					for (int i = 0; i < numArrays; i++)
-						glEnableVertexAttribArray(i);
+						//glBindBuffer(GL_ARRAY_BUFFER, shadowVolumeBufferCpu); //bind output of cpu impl as array buffer
+					}
+					else{
+						glBindVertexArray(shadowVolumeVAO);
 
-					// pozice
-					glVertexAttribPointer(0u, 4, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(ShadowVolumeVertex), reinterpret_cast<void*>(offsetof(ShadowVolumeVertex, x)));
-					// multiplicita
-					glVertexAttribIPointer(1u, 1, GL_INT, (GLsizei) sizeof(ShadowVolumeVertex), reinterpret_cast<void*>(offsetof(ShadowVolumeVertex, multiplicity)));
+						//glBindBuffer(GL_ARRAY_BUFFER, shadowVolumeBuffer); //bind output of compute shader as array buffer
 
+					}
+
+				
 
 
 						glEnable(GL_BLEND);
@@ -824,9 +789,7 @@ int main(int argc, char** argv)
 				
 
 							glDrawArrays(GL_TRIANGLES, 0, shadowVolumeInfo.triCount * 3);
-							for (int i = 0; i < numArrays; i++)
-								glDisableVertexAttribArray(i);
-							glBindBuffer(GL_ARRAY_BUFFER, 0);
+							
 
 					glBindVertexArray(0);
 				

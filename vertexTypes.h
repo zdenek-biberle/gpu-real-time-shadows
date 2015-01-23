@@ -40,7 +40,7 @@ struct SimpleVertex
 	float _x;
 	float _y;
 	float _z;
-    int padding;
+    //int padding;
 };
 
 struct ShadowVolumeVertex
@@ -54,9 +54,9 @@ struct ShadowVolumeVertex
 	float w;
 	int multiplicity;
 	int isCap;
-	int padding[2];
+	//int padding[2];
 };
 
-static_assert(sizeof(ShadowVolumeVertex) == sizeof(float) * 8, "Velikost struktury ShadowVolumeVertex neni 8 floatu");
+//static_assert(sizeof(ShadowVolumeVertex) == sizeof(float) * 8, "Velikost struktury ShadowVolumeVertex neni 8 floatu");
 
 #endif

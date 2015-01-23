@@ -12,7 +12,7 @@ struct InVertex
 	float x;
 	float y;
 	float z;
-	int padding;
+	//int padding;
 };
 
 struct OutVertex
@@ -20,8 +20,8 @@ struct OutVertex
 	vec4 position;
 	int multiplicity;
 	uint isCap;
-	uint padding0;
-	uint padding1;
+	//uint padding0;
+	//uint padding1;
 };
 
 struct EdgeLookupNode
