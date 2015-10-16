@@ -38,6 +38,9 @@
 #include "shadowComputationTypes.h"
 #include "cpuImpl.h"
 
+#include "fps_counter.h"
+#include "queryBuffer.h"
+
 int main(int argc, char** argv)
 {
 	if (argc < 3)
@@ -112,7 +115,15 @@ int main(int argc, char** argv)
 	
 	std::vector<decltype(environmentModel)*> scene = { &environmentModel, &shadowModel };
 	
-	std::cout << "Vytváříme buffery" << std::endl;
+
+	std::unique_ptr<fps_counter> fps;
+	std::unique_ptr<Font> font;
+	std::unique_ptr<bufferedQuery> timestampQuery;
+	//std::unique_ptr<bufferedQuery> timeElapsedQuery;
+
+
+
+	std::cout << "Creating buffers" << std::endl;
 
 	GLuint shadowVolumeVerticesCount;
 	GLuint stencilFrameBufferID;
@@ -123,6 +134,24 @@ int main(int argc, char** argv)
 	ShaderProgram lightingProgram("lighting");
 	ShaderProgram volumeComputationProgram("volumeComputation");
 	ShaderProgram volumeVisualizationProgram("volumeVisualization");
+	ShaderProgram fontProgram("font");
+
+
+	{
+		Shader Vshader(GL_VERTEX_SHADER, "./glsl/font/FontVS.vert");
+		Shader Fshader(GL_FRAGMENT_SHADER, "./glsl/font/FontFS.frag");
+
+
+		fontProgram.addShader(&Vshader);
+		fontProgram.addShader(&Fshader);
+
+		if (! fontProgram.linkProgram()) {
+			std::cin.ignore();
+			exit(1);
+		}
+
+		
+	}
 
 	{
 		Shader Vshader(GL_VERTEX_SHADER, "./glsl/scene/simple.vert");
@@ -186,6 +215,49 @@ int main(int argc, char** argv)
 		std::cin.ignore();
 		exit(1);
 	}
+
+
+	/*
+	control->font = std::unique_ptr<Font>(new Font());
+	control->font->addProgram(control->getProgram("font")->id);
+
+	//create font sampler
+	control->font->sampler = std::unique_ptr<Sampler>(new Sampler());
+
+	glSamplerParameteri(control->font->sampler->id, GL_TEXTURE_MIN_LOD, 0);
+	glSamplerParameteri(control->font->sampler->id, GL_TEXTURE_MAX_LOD, 0);
+
+	glSamplerParameteri(control->font->sampler->id, GL_TEXTURE_MAG_FILTER, GL_NEAREST);  //want to have sharp font
+	glSamplerParameteri(control->font->sampler->id, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+	glSamplerParameteri(control->font->sampler->id, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glSamplerParameteri(control->font->sampler->id, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+
+
+
+	control->modelToWorldMatrixUniform = glGetUniformLocation(control->getProgram("maze")->id, "modelToWorldMatrix");
+	control->globalUniformBlockIndex = glGetUniformBlockIndex(control->getProgram("maze")->id, "GlobalMatrices");  //perspective, position of camera
+
+
+	glUniformBlockBinding(control->getProgram("maze")->id, glGetUniformBlockIndex(control->getProgram("maze")->id, "GlobalMatrices"), globalMatricesBindingIndex);
+	glUniformBlockBinding(control->getProgram("font")->id, glGetUniformBlockIndex(control->getProgram("font")->id, "GlobalMatrices"), globalMatricesBindingIndex);
+
+	//create uniform buffer
+	glGenBuffers(1, &globalMatricesUBO);
+	glBindBuffer(GL_UNIFORM_BUFFER, globalMatricesUBO);
+	glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::mat4) * 2, NULL, GL_STREAM_DRAW);//sizeof GlobalMatrices struct in .vert
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+	//bind a range within a buffer object to an indexed buffer target
+	//glBindBufferRange(GLenum 	target,  GLuint 	index_where, 	GLuint buffer_from, GLintptr offset, GLsizeiptr size);
+	glBindBufferRange(GL_UNIFORM_BUFFER, globalMatricesBindingIndex, globalMatricesUBO, 0, sizeof(glm::mat4) * 2);
+
+	control->font->UBO = globalMatricesUBO;  //put to constructor or something.. setFunction
+	control->font->loadFont("./Fonts/EleganTech-.ttf", 20);*/
+
+	fps = std::unique_ptr<fps_counter>(new fps_counter());
+	timestampQuery = std::make_unique<bufferedQuery>(GL_TIMESTAMP);
 
 
 	glGenTextures(1, &stencilTextureID);
