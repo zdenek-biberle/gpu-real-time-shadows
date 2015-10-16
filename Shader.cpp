@@ -176,7 +176,7 @@ void ShaderProgram::do_introspection(){
 	//probably will need to revisit this later..
 
 	
-	std::vector<resource> resources;
+	//std::vector<resource> resources;
 
 	//in uniform blocks
 	GLint numBlocks = getResourceCount(GL_UNIFORM_BLOCK);
@@ -220,8 +220,8 @@ void ShaderProgram::do_introspection(){
 	for (int i = 0; i < resources.size(); i++){
 
 		//if it belongs to block, skip it
-		if (resources[i].propertyValues[3] != -1)
-			continue;
+		//if (resources[i].propertyValues[3] != -1)
+		//	continue;
 
 		//std::cout << resources[i].name << "\tid: " << resources[i].propertyValues[1] << "\ttype: " << translateType(resources[i].propertyValues[2]) << std::endl;
 	}
@@ -234,6 +234,8 @@ void ShaderProgram::do_introspection(){
 
 		resources.push_back(queryResource(resource_index, GL_PROGRAM_INPUT, { GL_NAME_LENGTH, GL_LOCATION, GL_TYPE }));
 	}
+
+	//this->resources = resources;
 
 	//should print all..
 		printResources();
@@ -311,18 +313,18 @@ void ShaderProgram::printResources() {
 	
 	for(auto &res : resources){
 
-		for (int i = 0; i < res.second.propertyLabels.size(); i++) {
-			if (res.second.propertyLabels[i] == GL_NAME_LENGTH) {
-				cout << res.second.name << " ";
+		for (int i = 0; i < res.propertyLabels.size(); i++) {
+			if (res.propertyLabels[i] == GL_NAME_LENGTH) {
+				cout << res.name << " ";
 				continue;
 			}
 
-			if (res.second.propertyLabels[i] == GL_TYPE) {
-				cout << translateProperty(res.second.propertyLabels[i]) << " " << translateType(res.second.propertyValues[i]) << endl;
+			if (res.propertyLabels[i] == GL_TYPE) {
+				cout << translateProperty(res.propertyLabels[i]) << " " << translateType(res.propertyValues[i]) << endl;
 				continue;
 			}
 
-			cout << translateProperty(res.second.propertyLabels[i]) << " " << res.second.propertyValues[i] << endl;
+			cout << translateProperty(res.propertyLabels[i]) << " " << res.propertyValues[i] << endl;
 		}
 
 	}
@@ -339,10 +341,18 @@ Through this function can be retrieved resource type and location by resource na
 GLint ShaderProgram::getResource(std::string resource_name, resource_property_enum resource_property) {
 	//I want to avoid exception when using at() and don't want to insert not present keys with []
 
-	if (resources.count(resource_name) != 1)
+/*	if (resources.count(resource_name) != 1)
 		return -1;
 
-	return resources[resource_name].propertyValues[resource_property];
+	return resources[resource_name].propertyValues[resource_property];*/
+
+	for (unsigned int i = 0; i < resources.size(); i++) {
+		if (resources.at(i).name == resource_name)
+			for (unsigned int j = 0; j < resources.at(i).propertyValues.size(); j++) {
+				if (resources.at(i).propertyLabels.at(j) == resource_property)
+					return resources.at(i).propertyValues.at(j);
+			}
+	}
 }
 
 //yay regexps https://msdn.microsoft.com/en-us/library/2k3te2cs.aspx

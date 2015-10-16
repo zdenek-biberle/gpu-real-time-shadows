@@ -75,7 +75,7 @@ class ShaderProgram
 
 
 	GLint getResource(std::string resource_name, resource_property_enum resource_property = LOCATION);
-	std::unordered_map<std::string, resource> resources;
+	//std::unordered_map<std::string, resource> resources;
 
 	resource queryResource(GLint block_index, GLenum programInterface, std::vector<GLenum> properties = { GL_NAME_LENGTH, GL_LOCATION, GL_TYPE }, GLint bufferSize = -1);
 	std::string translateType(GLenum type);
@@ -85,6 +85,7 @@ class ShaderProgram
 
 private:
 	bool linked;		// Whether shader was loaded and compiled
+	std::vector<resource> resources;
 
 	std::vector<Shader *> shaders;
 	void detachShaders();

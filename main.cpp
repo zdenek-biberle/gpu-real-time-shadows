@@ -129,6 +129,8 @@ int main(int argc, char** argv)
 	GLuint stencilFrameBufferID;
 	GLuint stencilTextureID;
 
+	//add programs to control..
+
 	ShaderProgram simpleProgram("simple");
 	ShaderProgram stencilProgram("stencil");
 	ShaderProgram lightingProgram("lighting");
