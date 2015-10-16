@@ -12,7 +12,7 @@ struct InVertex
 	float x;
 	float y;
 	float z;
-	//int padding;
+	int padding;
 };
 
 struct OutVertex
@@ -20,8 +20,8 @@ struct OutVertex
 	vec4 position;
 	int multiplicity;
 	uint isCap;
-	//uint padding0;
-	//uint padding1;
+	uint padding0;
+	uint padding1;
 };
 
 struct EdgeLookupNode
@@ -178,7 +178,7 @@ void main()
 		
 		if (isFrontFacing(a0, a1, a2))
 		{
-			uint triIdx = reserveTriangles(2);
+			uint triIdx = reserveTriangles(2);	//returns triCount before adding the number.. effectively it's index of next free triangle "slot" in array
 			emitTriangle(triIdx, a0, a1, a2, -2, 1);
 			emitTriangle(triIdx + 1, a0 + extrusionVec, a2 + extrusionVec, a1 + extrusionVec, -2, 1);	
 		}

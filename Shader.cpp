@@ -39,12 +39,7 @@ bool Shader::compile(GLenum type, const std::string &filename)	{
 
 		const std::string& tmp = shaderData.str();
 		
-    /**
-     *  !!!POVODNA VERZIA KDE REDEFINUJES ID KT. NAPLNAS A NA KONCI SA
-     *  ZNICI A TEDA PREMENNA ID DEFINOVANA V CLASS MA NAHODNU HODNOTU
-     *  GLuint id = glCreateShader(type);
-     */
-
+   
 		id = glCreateShader(type);
 
 		GLint sourceLength = (GLint)shaderData.str().size();
@@ -97,6 +92,8 @@ ShaderProgram::~ShaderProgram(){
 
 bool ShaderProgram::addShader(Shader* shader)
 {
+
+	//should be compiled from Shader constructor
 	if(! shader->isCompiled()){
 
 		GLint infoLogLength;

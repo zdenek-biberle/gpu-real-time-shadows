@@ -37,6 +37,8 @@ struct SimpleVertexComparer
 	}
 };
 
+
+//basically deduplicates vertices and builds index array
 ModelInfo simplifyModel(
 	ModelInfo inModel,
 	const std::vector<Vertex>& inVertices, 

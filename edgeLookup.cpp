@@ -25,6 +25,8 @@ bool edgeLookupNodeCompare(EdgeLookupNode a, EdgeLookupNode b)
 	else return false;
 }
 
+//creates array of edges consisting of one edge, one non-edge vertex and triangle id to which it belongs
+//finally it sorts them by idx0, then idx2 and eventually by triangle id
 void generateEdgeLookup(
 	const ModelInfo& modelInfo,
 	const std::vector<GLuint>& indices,
@@ -32,6 +34,7 @@ void generateEdgeLookup(
 {
 	edgeLookup.reserve(indices.size());
 	
+	//j is triangle id
 	for (unsigned i = modelInfo.baseIndex, j = 0; i < modelInfo.baseIndex + modelInfo.indexCount; i += 3, j++)
 	{
 		auto idx0 = indices.at(i);

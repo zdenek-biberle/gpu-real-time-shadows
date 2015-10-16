@@ -121,6 +121,8 @@ int main(int argc, char** argv)
 	ShaderProgram simpleProgram("simple");
 	ShaderProgram stencilProgram("stencil");
 	ShaderProgram lightingProgram("lighting");
+	ShaderProgram volumeComputationProgram("volumeComputation");
+	ShaderProgram volumeVisualizationProgram("volumeVisualization");
 
 	{
 		Shader Vshader(GL_VERTEX_SHADER, "./glsl/scene/simple.vert");
@@ -161,6 +163,31 @@ int main(int argc, char** argv)
 		}
 	}
 	
+
+	{
+		Shader Cshader(GL_COMPUTE_SHADER, "./glsl/volume-computation/compute.glsl");
+		
+		volumeComputationProgram.addShader(&Cshader);
+
+		if (!volumeComputationProgram.linkProgram()) {
+			std::cin.ignore();
+			exit(1);
+		}
+	}
+
+	
+	Shader vertexShaders(GL_VERTEX_SHADER, "./glsl/volume-visualization/vert.glsl");
+	Shader fragmentShaders(GL_FRAGMENT_SHADER, "./glsl/volume-visualization/frag.glsl");
+
+	volumeVisualizationProgram.addShader(&vertexShaders);
+	volumeVisualizationProgram.addShader(&fragmentShaders);
+
+	if (!volumeVisualizationProgram.linkProgram()) {
+		std::cin.ignore();
+		exit(1);
+	}
+
+
 	glGenTextures(1, &stencilTextureID);
 	glBindTexture(GL_TEXTURE_2D, stencilTextureID);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_R32I, windowWidth, windowHeight, 0, GL_RED_INTEGER, GL_INT, nullptr);
@@ -186,7 +213,7 @@ int main(int argc, char** argv)
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), indices.data(), GL_STATIC_DRAW);
 
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, shadowVolumeBuffer);
-	// *7, protože pro každý trojúhelník můžeme potenciálně vygenerovat až 7 dalších trojúhelníků
+	// *8, protože pro každý trojúhelník můžeme potenciálně vygenerovat až 7 dalších trojúhelníků + puvodni
 	glBufferData(GL_SHADER_STORAGE_BUFFER, shadowModel.indexCount * sizeof(ShadowVolumeVertex) * 8, nullptr, GL_DYNAMIC_COPY);
 
 
@@ -380,9 +407,9 @@ int main(int argc, char** argv)
 	
 	
 	ShadowVolumeComputationInfo shadowVolumeInfo;
-	GLuint volumeComputationProgram = 0;
-	GLuint volumeVisualizationProgram = 0;
-	
+
+
+
 	auto run = true;
 	while (run)
 	{	
@@ -478,81 +505,20 @@ int main(int argc, char** argv)
 		
 		try
 		{
-			auto projection = glm::perspective(90.0f, float(windowWidth) / float(windowHeight), 0.1f, 100.0f);
-			auto view = glm::rotate(
-				glm::rotate(
-				glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, dist)),
-				rotx,
-				glm::vec3(1.0f, 0.0f, 0.0f)
-				),
-				roty, glm::vec3(0.0f, 1.0f, 0.0f)
-				);
-			shadowModel.transform =
-				glm::rotate(
-				glm::mat4(1.0f),
-				modelRoty, glm::vec3(0.0f, 1.0f, 0.0f));
 
-			environmentModel.transform =
-				glm::rotate(
-				glm::mat4(1.0f),
-				modelRoty * 0.25f, glm::vec3(0.0f, 1.0f, 0.0f));
+			auto projection = glm::perspective(90.0f, float(windowWidth) / float(windowHeight), 0.1f, 100.0f);
+			
+			auto translate = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, dist));
+			auto rotate =	glm::rotate(translate, rotx, glm::vec3(1.0f, 0.0f, 0.0f));
+			auto view =		glm::rotate(rotate, roty, glm::vec3(0.0f, 1.0f, 0.0f));
+
+			shadowModel.transform =	glm::rotate(glm::mat4(1.0f), modelRoty, glm::vec3(0.0f, 1.0f, 0.0f));
+
+			environmentModel.transform = glm::rotate(glm::mat4(1.0f), modelRoty * 0.25f, glm::vec3(0.0f, 1.0f, 0.0f));
 
 			auto pMat = projection;
 
-			// loadneme shadery, pokud je to treba
-			if (loadShaders)
-			{
-				std::cout << "Nahráváme shadery" << std::endl;
-				loadShaders = false;
-
-				if (volumeComputationProgram != 0)
-				{
-					glDeleteProgram(volumeComputationProgram);
-					volumeComputationProgram = 0;
-				}
-
-				if (volumeVisualizationProgram != 0)
-				{
-					glDeleteProgram(volumeVisualizationProgram);
-					volumeVisualizationProgram = 0;
-				}
-
-				try
-				{
-					std::vector<std::string> computeShaders;
-
-					computeShaders.push_back(readFile("./glsl/volume-computation/compute.glsl"));
-
-					volumeComputationProgram = createProgram(
-						std::vector<std::string>(),
-						std::vector<std::string>(),
-						std::vector<std::string>(),
-						computeShaders);
-				}
-				catch (std::exception& ex)
-				{
-					std::cerr << "Chyba kompilace programu pro generování shadow volume: " << ex.what() << std::endl;
-				}
-
-				try
-				{
-					std::vector<std::string> vertexShaders;
-					std::vector<std::string> fragmentShaders;
-
-					vertexShaders.push_back(readFile("./glsl/volume-visualization/vert.glsl"));
-					fragmentShaders.push_back(readFile("./glsl/volume-visualization/frag.glsl"));
-
-					volumeVisualizationProgram = createProgram(
-						vertexShaders,
-						std::vector<std::string>(),
-						fragmentShaders,
-						std::vector<std::string>());
-				}
-				catch (std::exception& ex)
-				{
-					std::cerr << "Chyba kompilace programu pro zobrazování shadow volume: " << ex.what() << std::endl;
-				}
-			}
+			
 
 			{
 				unsigned computationStartTicks = SDL_GetTicks();
@@ -580,34 +546,19 @@ int main(int argc, char** argv)
 					//glBufferSubData(GL_ARRAY_BUFFER, 0, shadowVolumeVertices.size() * sizeof(ShadowVolumeVertex), shadowVolumeVertices.data());
 					glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-					/* //nope.. takto to asi nepujde
-					glBindBuffer(GL_ARRAY_BUFFER, shadowVolumeBufferCpu);
-						std::vector<ShadowVolumeVertex> readback;
-
-						GLint size;
-						glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
-						readback.reserve(size);
-
-						glGetBufferSubData(GL_ARRAY_BUFFER, 0, size, &readback);
-
-					glBindBuffer(GL_ARRAY_BUFFER, 0);
-					std::cout << "CPU\n";
-
-					for (auto item : readback){
-						std::cout << item.x << " " << item.y << " " << item.z << "  " << item.multiplicity;
-					}
-					std::cout << std::endl;*/
+					
+				
 				}
-				else if (volumeComputationProgram != 0)
+				else if (volumeComputationProgram.id != 0)
 				{
-					glUseProgram(volumeComputationProgram);
+					volumeComputationProgram.useProgram();
 
 					glBindBuffer(GL_SHADER_STORAGE_BUFFER, shadowVolumeComputationInfo);
 					glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(ShadowVolumeComputationInfo), &shadowVolumeInfo, GL_STREAM_READ);  //nulovani
 					//glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(ShadowVolumeComputationInfo), &shadowVolumeInfo);
 					glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
-					auto lightDirLocation = glGetUniformLocation(volumeComputationProgram, "lightDir");
+					auto lightDirLocation = glGetUniformLocation(volumeComputationProgram.id, "lightDir");
 					glUniform3fv(lightDirLocation, 1, glm::value_ptr(lightDir));
 
 					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, simpleVbo);
@@ -616,10 +567,10 @@ int main(int argc, char** argv)
 					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, shadowVolumeComputationInfo);
 					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, edgeLookupBuffer);
 
-					auto indexOffsetLocation = glGetUniformLocation(volumeComputationProgram, "indexOffset");
+					auto indexOffsetLocation = glGetUniformLocation(volumeComputationProgram.id, "indexOffset");
 					glUniform1ui(indexOffsetLocation, simplifiedModel.baseIndex);
 
-					auto indexCountLocation = glGetUniformLocation(volumeComputationProgram, "indexCount");
+					auto indexCountLocation = glGetUniformLocation(volumeComputationProgram.id, "indexCount");
 					glUniform1ui(indexCountLocation, simplifiedModel.indexCount);
 
 					
@@ -638,25 +589,6 @@ int main(int argc, char** argv)
 					glUseProgram(0);
 
 					
-
-					/*
-					glBindBuffer(GL_ARRAY_BUFFER, shadowVolumeBuffer);
-					std::vector<ShadowVolumeVertex> readback;
-					
-					GLint size;
-					glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
-					readback.reserve(size);
-
-						glGetBufferSubData(GL_ARRAY_BUFFER, 0, size, &readback);
-
-						glBindBuffer(GL_ARRAY_BUFFER, 0);
-						std::cout << "GPU\n";
-					for (auto item : readback){
-						std::cout << item.x << " " << item.y << " " << item.z << "  " << item.multiplicity;
-					}
-					std::cout << std::endl;
-					*/
-
 				}
 
 				frameComputationTickCounter += SDL_GetTicks() - computationStartTicks;
@@ -794,10 +726,10 @@ int main(int argc, char** argv)
 
 			glUseProgram(0);
 	
-			if (volumeVisualizationProgram != 0 && drawShadowVolume)
+			if (volumeVisualizationProgram.id != 0 && drawShadowVolume)
 			{
-				glUseProgram(volumeVisualizationProgram);
-
+				
+				volumeVisualizationProgram.useProgram();
 
 					if (CPU){
 						glBindVertexArray(shadowVolumeVAO_CPU);
@@ -818,9 +750,9 @@ int main(int argc, char** argv)
 						glBlendFunc(GL_SRC_ALPHA, GL_ONE);
 						glDepthMask(GL_FALSE);
 			
-						auto mvLocation = glGetUniformLocation(volumeVisualizationProgram, "mvMat");
-						auto mvNormLocation = glGetUniformLocation(volumeVisualizationProgram, "mvNormMat");
-						auto pLocation = glGetUniformLocation(volumeVisualizationProgram, "pMat");
+						auto mvLocation = glGetUniformLocation(volumeVisualizationProgram.id, "mvMat");
+						auto mvNormLocation = glGetUniformLocation(volumeVisualizationProgram.id, "mvNormMat");
+						auto pLocation = glGetUniformLocation(volumeVisualizationProgram.id, "pMat");
 				
 						auto mvMat = view * shadowModel.transform;
 						auto mvNormMat = glm::transpose(glm::inverse(glm::mat3(mvMat)));
