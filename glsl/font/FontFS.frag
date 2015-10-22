@@ -1,4 +1,4 @@
-#version 330
+#version 430
 
 in vec2 textureCoordinates; // Interpolated values from the vertex shaders
 
@@ -18,9 +18,9 @@ void main()
 	} else {		//it' something else -- cursor
 		alpha = textureColor.a;
 	}
-	//if(textureColor.r == 0){
-	//outputColor = vec4(0.1, 0.6, 0.0, 0.3);
-	//}else{
+
 	outputColor = vec4(colorUniform.r, colorUniform.g, colorUniform.b, alpha);
-		//}
+		
+			//outputColor = vec4(150, colorUniform.g, colorUniform.b, 1);
+
 }

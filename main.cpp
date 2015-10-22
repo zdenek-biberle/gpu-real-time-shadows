@@ -142,14 +142,6 @@ int main(int argc, char** argv)
 	control->addProgram("volumeVisualization");
 	control->addProgram("font");
 	
-	/*
-	ShaderProgram simpleProgram("simple");
-	ShaderProgram stencilProgram("stencil");
-	ShaderProgram lightingProgram("lighting");
-	ShaderProgram volumeComputationProgram("volumeComputation");
-	ShaderProgram volumeVisualizationProgram("volumeVisualization");
-	ShaderProgram fontProgram("font");
-	*/
 
 	{
 		Shader Vshader(GL_VERTEX_SHADER, "./glsl/font/FontVS.vert");
@@ -165,7 +157,9 @@ int main(int argc, char** argv)
 			exit(1);
 		}
 
-		
+		//WTF???
+		GLuint sampl = glGetUniformLocation(fontProgram->id, "fontSampler");
+		GLuint trans = glGetUniformLocation(fontProgram->id, "objectTransform");
 	}
 
 	{
@@ -286,8 +280,8 @@ int main(int argc, char** argv)
 	control->font->loadFont("./Fonts/EleganTech-.ttf", 20);
 
 
-	fps = std::make_unique<fps_counter>();
-	timestampQuery = std::make_unique<bufferedQuery>(GL_TIMESTAMP);
+	//fps = std::make_unique<fps_counter>();
+	//timestampQuery = std::make_unique<bufferedQuery>(GL_TIMESTAMP);
 
 
 	glGenTextures(1, &stencilTextureID);
@@ -509,10 +503,19 @@ int main(int argc, char** argv)
 	
 	
 	ShadowVolumeComputationInfo shadowVolumeInfo;
+	
+	
 
 
-	staticText test(control->font.get(), "this is test", 50, 50, 20);
-	/////////////jeste kde je orto matice atp..
+
+	
+
+	//////////////////ok.. problem is.. fontSampler Location returns -1
+	staticText test(control->font.get(), "this is test", 0, 0, 20);
+	test.position = vec3(control->windowWidth / 2, control->windowHeight / 2 - 100, 0.5);
+	test.positionIsCenter();
+	test.color = vec4(1.0, 0.0, 1.0, 1.0);
+
 	auto run = true;
 	while (run)
 	{	
@@ -536,6 +539,7 @@ int main(int argc, char** argv)
 							control->recomputeProjections(windowWidth, windowHeight);
 
 							glViewport(0, 0, windowWidth, windowHeight);
+
 							glDeleteTextures(1, &stencilTextureID);
 							glGenTextures(1, &stencilTextureID);
 							glBindTexture(GL_TEXTURE_2D, stencilTextureID);
@@ -575,6 +579,8 @@ int main(int argc, char** argv)
 							else std::cout << "Nyní se používá GPU" << std::endl;
 							break;
 						case SDLK_F5: loadShaders = true; break;
+
+												
 					}
 					break;
 				
@@ -583,6 +589,7 @@ int main(int argc, char** argv)
 			 }
 		}
 		
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		//fps->
 
@@ -594,11 +601,12 @@ int main(int argc, char** argv)
 
 		glBindBuffer(GL_UNIFORM_BUFFER, globalMatricesUBO);
 
-		glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(camMatrix.Top()));
-		glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(control->perspectiveMatrix.Top()));
+			glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(camMatrix.Top()));
+			glBufferSubData(GL_UNIFORM_BUFFER, 0,                 sizeof(glm::mat4), glm::value_ptr(control->orthographicMatrix.Top()));
 
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
+		
 		test.print();
 
 		// Cas a pocitadla snimku a podobne veci //
@@ -748,7 +756,7 @@ int main(int argc, char** argv)
 			glDepthFunc(GL_LESS);
 			glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 			glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 
