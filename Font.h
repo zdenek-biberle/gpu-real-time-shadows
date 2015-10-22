@@ -69,7 +69,7 @@ public:
 	std::vector<Character> characters;   //stores alphabet
 	uint newLine;
 
-	Sampler *sampler;		//move this to control - same as programs..
+	Sampler *sampler;		//move this to control - same as programs..  if not exists, complain
 	GLuint program;
 
 	bool loaded;

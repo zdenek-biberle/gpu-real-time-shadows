@@ -131,23 +131,36 @@ int main(int argc, char** argv)
 
 	//add programs to control..
 
+	Control *control = Control::getInstance();
+
+	control->recomputeProjections(windowWidth, windowHeight);
+
+	control->addProgram("simple");
+	control->addProgram("stencil");
+	control->addProgram("lighting");
+	control->addProgram("volumeComputation");
+	control->addProgram("volumeVisualization");
+	control->addProgram("font");
+	
+	/*
 	ShaderProgram simpleProgram("simple");
 	ShaderProgram stencilProgram("stencil");
 	ShaderProgram lightingProgram("lighting");
 	ShaderProgram volumeComputationProgram("volumeComputation");
 	ShaderProgram volumeVisualizationProgram("volumeVisualization");
 	ShaderProgram fontProgram("font");
-
+	*/
 
 	{
 		Shader Vshader(GL_VERTEX_SHADER, "./glsl/font/FontVS.vert");
 		Shader Fshader(GL_FRAGMENT_SHADER, "./glsl/font/FontFS.frag");
 
+		ShaderProgram *fontProgram = control->getProgram("font");
 
-		fontProgram.addShader(&Vshader);
-		fontProgram.addShader(&Fshader);
+		fontProgram->addShader(&Vshader);
+		fontProgram->addShader(&Fshader);
 
-		if (! fontProgram.linkProgram()) {
+		if (!fontProgram->linkProgram()) {
 			std::cin.ignore();
 			exit(1);
 		}
@@ -158,11 +171,13 @@ int main(int argc, char** argv)
 	{
 		Shader Vshader(GL_VERTEX_SHADER, "./glsl/scene/simple.vert");
 		Shader Fshader(GL_FRAGMENT_SHADER, "./glsl/scene/simple.frag");
-	
-		simpleProgram.addShader(&Vshader);
-		simpleProgram.addShader(&Fshader);
 
-		if (!simpleProgram.linkProgram()){
+		ShaderProgram *simpleProgram = control->getProgram("simple");
+
+		simpleProgram->addShader(&Vshader);
+		simpleProgram->addShader(&Fshader);
+
+		if (!simpleProgram->linkProgram()){
 			std::cin.ignore();
 			exit(1);
 		}
@@ -172,10 +187,12 @@ int main(int argc, char** argv)
 		Shader Vshader(GL_VERTEX_SHADER, "./glsl/scene/stencil.vert");
 		Shader Fshader(GL_FRAGMENT_SHADER, "./glsl/scene/stencil.frag");
 
-		stencilProgram.addShader(&Vshader);
-		stencilProgram.addShader(&Fshader);
+		ShaderProgram *stencilProgram = control->getProgram("stencil");
 
-		if (!stencilProgram.linkProgram()){
+		stencilProgram->addShader(&Vshader);
+		stencilProgram->addShader(&Fshader);
+
+		if (!stencilProgram->linkProgram()){
 			std::cin.ignore();
 			exit(1);
 		}
@@ -185,10 +202,12 @@ int main(int argc, char** argv)
 		Shader Vshader(GL_VERTEX_SHADER, "./glsl/scene/vert.glsl");
 		Shader Fshader(GL_FRAGMENT_SHADER, "./glsl/scene/frag.glsl");
 
-		lightingProgram.addShader(&Vshader);
-		lightingProgram.addShader(&Fshader);
+		ShaderProgram *lightingProgram = control->getProgram("lighting");
 
-		if (!lightingProgram.linkProgram()){
+		lightingProgram->addShader(&Vshader);
+		lightingProgram->addShader(&Fshader);
+
+		if (!lightingProgram->linkProgram()){
 			std::cin.ignore();
 			exit(1);
 		}
@@ -198,9 +217,11 @@ int main(int argc, char** argv)
 	{
 		Shader Cshader(GL_COMPUTE_SHADER, "./glsl/volume-computation/compute.glsl");
 		
-		volumeComputationProgram.addShader(&Cshader);
+		ShaderProgram *volumeComputationProgram = control->getProgram("volumeComputation");
 
-		if (!volumeComputationProgram.linkProgram()) {
+		volumeComputationProgram->addShader(&Cshader);
+
+		if (!volumeComputationProgram->linkProgram()) {
 			std::cin.ignore();
 			exit(1);
 		}
@@ -209,41 +230,45 @@ int main(int argc, char** argv)
 	
 	Shader vertexShaders(GL_VERTEX_SHADER, "./glsl/volume-visualization/vert.glsl");
 	Shader fragmentShaders(GL_FRAGMENT_SHADER, "./glsl/volume-visualization/frag.glsl");
+	
+	ShaderProgram *volumeVisualizationProgram = control->getProgram("volumeVisualization");
 
-	volumeVisualizationProgram.addShader(&vertexShaders);
-	volumeVisualizationProgram.addShader(&fragmentShaders);
+	volumeVisualizationProgram->addShader(&vertexShaders);
+	volumeVisualizationProgram->addShader(&fragmentShaders);
 
-	if (!volumeVisualizationProgram.linkProgram()) {
+	if (!volumeVisualizationProgram->linkProgram()) {
 		std::cin.ignore();
 		exit(1);
 	}
 
+	//create font sampler
+	Sampler *sampler = control->addSampler("font");
 
-	/*
-	control->font = std::unique_ptr<Font>(new Font());
+	glSamplerParameteri(sampler->id, GL_TEXTURE_MIN_LOD, 0);
+	glSamplerParameteri(sampler->id, GL_TEXTURE_MAX_LOD, 0);
+
+	glSamplerParameteri(sampler->id, GL_TEXTURE_MAG_FILTER, GL_NEAREST);  //want to have sharp font
+	glSamplerParameteri(sampler->id, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+
+	//glSamplerParameteri(sampler->id, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	//glSamplerParameteri(sampler->id, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+
+	glSamplerParameteri(sampler->id, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glSamplerParameteri(sampler->id, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+	
+	//essentials should be part of constructor
+	control->font = std::make_unique<Font>();
 	control->font->addProgram(control->getProgram("font")->id);
 
-	//create font sampler
-	control->font->sampler = std::unique_ptr<Sampler>(new Sampler());
-
-	glSamplerParameteri(control->font->sampler->id, GL_TEXTURE_MIN_LOD, 0);
-	glSamplerParameteri(control->font->sampler->id, GL_TEXTURE_MAX_LOD, 0);
-
-	glSamplerParameteri(control->font->sampler->id, GL_TEXTURE_MAG_FILTER, GL_NEAREST);  //want to have sharp font
-	glSamplerParameteri(control->font->sampler->id, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-
-	glSamplerParameteri(control->font->sampler->id, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glSamplerParameteri(control->font->sampler->id, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	
 
 
+	GLuint globalMatricesBindingIndex = 0;
 
-
-	control->modelToWorldMatrixUniform = glGetUniformLocation(control->getProgram("maze")->id, "modelToWorldMatrix");
-	control->globalUniformBlockIndex = glGetUniformBlockIndex(control->getProgram("maze")->id, "GlobalMatrices");  //perspective, position of camera
-
-
-	glUniformBlockBinding(control->getProgram("maze")->id, glGetUniformBlockIndex(control->getProgram("maze")->id, "GlobalMatrices"), globalMatricesBindingIndex);
 	glUniformBlockBinding(control->getProgram("font")->id, glGetUniformBlockIndex(control->getProgram("font")->id, "GlobalMatrices"), globalMatricesBindingIndex);
+	
+	GLuint globalMatricesUBO;
 
 	//create uniform buffer
 	glGenBuffers(1, &globalMatricesUBO);
@@ -256,9 +281,12 @@ int main(int argc, char** argv)
 	glBindBufferRange(GL_UNIFORM_BUFFER, globalMatricesBindingIndex, globalMatricesUBO, 0, sizeof(glm::mat4) * 2);
 
 	control->font->UBO = globalMatricesUBO;  //put to constructor or something.. setFunction
-	control->font->loadFont("./Fonts/EleganTech-.ttf", 20);*/
+	control->font->sampler = sampler;
 
-	fps = std::unique_ptr<fps_counter>(new fps_counter());
+	control->font->loadFont("./Fonts/EleganTech-.ttf", 20);
+
+
+	fps = std::make_unique<fps_counter>();
 	timestampQuery = std::make_unique<bufferedQuery>(GL_TIMESTAMP);
 
 
@@ -483,7 +511,8 @@ int main(int argc, char** argv)
 	ShadowVolumeComputationInfo shadowVolumeInfo;
 
 
-
+	staticText test(control->font.get(), "this is test", 50, 50, 20);
+	/////////////jeste kde je orto matice atp..
 	auto run = true;
 	while (run)
 	{	
@@ -500,8 +529,12 @@ int main(int argc, char** argv)
 					switch (event.window.event)
 					{
 						case SDL_WINDOWEVENT_RESIZED:
+
 							windowWidth = event.window.data1;
 							windowHeight = event.window.data2;
+
+							control->recomputeProjections(windowWidth, windowHeight);
+
 							glViewport(0, 0, windowWidth, windowHeight);
 							glDeleteTextures(1, &stencilTextureID);
 							glGenTextures(1, &stencilTextureID);
@@ -550,6 +583,24 @@ int main(int argc, char** argv)
 			 }
 		}
 		
+
+		//fps->
+
+		control->getProgram("font")->useProgram();
+
+		glutil::MatrixStack camMatrix;
+		camMatrix.SetIdentity();
+
+
+		glBindBuffer(GL_UNIFORM_BUFFER, globalMatricesUBO);
+
+		glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(camMatrix.Top()));
+		glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(control->perspectiveMatrix.Top()));
+
+		glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+		test.print();
+
 		// Cas a pocitadla snimku a podobne veci //
 		{
 			auto lastTicks = ticks;
@@ -580,7 +631,6 @@ int main(int argc, char** argv)
 		try
 		{
 
-			auto projection = glm::perspective(90.0f, float(windowWidth) / float(windowHeight), 0.1f, 100.0f);
 			
 			auto translate = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, dist));
 			auto rotate =	glm::rotate(translate, rotx, glm::vec3(1.0f, 0.0f, 0.0f));
@@ -590,7 +640,7 @@ int main(int argc, char** argv)
 
 			environmentModel.transform = glm::rotate(glm::mat4(1.0f), modelRoty * 0.25f, glm::vec3(0.0f, 1.0f, 0.0f));
 
-			auto pMat = projection;
+			auto pMat = control->perspectiveMatrix.Top();
 
 			
 
@@ -623,16 +673,18 @@ int main(int argc, char** argv)
 					
 				
 				}
-				else if (volumeComputationProgram.id != 0)
+				else if (control->getProgram("volumeComputation")->id != 0)
 				{
-					volumeComputationProgram.useProgram();
+					ShaderProgram *program = control->getProgram("volumeComputation");
+
+					program->useProgram();
 
 					glBindBuffer(GL_SHADER_STORAGE_BUFFER, shadowVolumeComputationInfo);
 					glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(ShadowVolumeComputationInfo), &shadowVolumeInfo, GL_STREAM_READ);  //nulovani
 					//glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(ShadowVolumeComputationInfo), &shadowVolumeInfo);
 					glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
-					auto lightDirLocation = glGetUniformLocation(volumeComputationProgram.id, "lightDir");
+					auto lightDirLocation = glGetUniformLocation(program->id, "lightDir");
 					glUniform3fv(lightDirLocation, 1, glm::value_ptr(lightDir));
 
 					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, simpleVbo);
@@ -641,10 +693,10 @@ int main(int argc, char** argv)
 					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, shadowVolumeComputationInfo);
 					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, edgeLookupBuffer);
 
-					auto indexOffsetLocation = glGetUniformLocation(volumeComputationProgram.id, "indexOffset");
+					auto indexOffsetLocation = glGetUniformLocation(program->id, "indexOffset");
 					glUniform1ui(indexOffsetLocation, simplifiedModel.baseIndex);
 
-					auto indexCountLocation = glGetUniformLocation(volumeComputationProgram.id, "indexCount");
+					auto indexCountLocation = glGetUniformLocation(program->id, "indexCount");
 					glUniform1ui(indexCountLocation, simplifiedModel.indexCount);
 
 					
@@ -680,7 +732,10 @@ int main(int argc, char** argv)
 
 			///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-			simpleProgram.useProgram();
+			ShaderProgram *program = control->getProgram("simple");
+
+			program->useProgram();
+			
 
 			glBindVertexArray(depthVAO);
 
@@ -697,8 +752,8 @@ int main(int argc, char** argv)
 
 			glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 
-			auto mvLocation = glGetUniformLocation(simpleProgram.id, "mvMat");
-			auto pLocation = glGetUniformLocation(simpleProgram.id, "pMat");
+			auto mvLocation = glGetUniformLocation(program->id, "mvMat");
+			auto pLocation = glGetUniformLocation(program->id, "pMat");
 
 
 
@@ -716,7 +771,10 @@ int main(int argc, char** argv)
 			glUseProgram(0);
 			///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-			stencilProgram.useProgram();
+			program = control->getProgram("stencil");
+
+			program->useProgram();
+			
 
 			if (CPU){
 				glBindVertexArray(stencilVAO_CPU);
@@ -736,8 +794,8 @@ int main(int argc, char** argv)
 			
 				glBindImageTexture(0, stencilTextureID, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32I);
 
-				mvLocation = glGetUniformLocation(stencilProgram.id, "mvMat");
-				pLocation = glGetUniformLocation(stencilProgram.id, "pMat");
+				mvLocation = glGetUniformLocation(program->id, "mvMat");
+				pLocation = glGetUniformLocation(program->id, "pMat");
 
 				glUniformMatrix4fv(mvLocation, 1, GL_FALSE, glm::value_ptr(view * shadowModel.transform));
 				glUniformMatrix4fv(pLocation, 1, GL_FALSE, glm::value_ptr(pMat));
@@ -752,7 +810,10 @@ int main(int argc, char** argv)
 
 			///////////////////////////////////////////////////////////////////////////////////////////////////////
 			
-			lightingProgram.useProgram();
+			program = control->getProgram("lighting");
+
+			program->useProgram();
+			
 
 				glBindVertexArray(sceneVAO);
 
@@ -767,15 +828,15 @@ int main(int argc, char** argv)
 					//draw scene with lighting
 
 					//reuse previously declared variables
-					mvLocation = glGetUniformLocation(lightingProgram.id, "mvMat");
-					auto mvNormLocation = glGetUniformLocation(lightingProgram.id, "mvNormMat");
-					pLocation = glGetUniformLocation(lightingProgram.id, "pMat");
+					mvLocation = glGetUniformLocation(program->id, "mvMat");
+					auto mvNormLocation = glGetUniformLocation(program->id, "mvNormMat");
+					pLocation = glGetUniformLocation(program->id, "pMat");
 
 					glBindImageTexture(0, stencilTextureID, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32I);
 
 					glUniformMatrix4fv(pLocation, 1, GL_FALSE, glm::value_ptr(pMat));
 
-					auto lightDirLocation = glGetUniformLocation(lightingProgram.id, "lightDir");
+					auto lightDirLocation = glGetUniformLocation(program->id, "lightDir");
 
 					if (lightDirLocation != -1)
 					{
@@ -800,10 +861,12 @@ int main(int argc, char** argv)
 
 			glUseProgram(0);
 	
-			if (volumeVisualizationProgram.id != 0 && drawShadowVolume)
+			if (control->getProgram("volumeVisualization")->id != 0 && drawShadowVolume)
 			{
 				
-				volumeVisualizationProgram.useProgram();
+				ShaderProgram *program = control->getProgram("volumeVisualization");
+
+				program->useProgram();
 
 					if (CPU){
 						glBindVertexArray(shadowVolumeVAO_CPU);
@@ -824,9 +887,9 @@ int main(int argc, char** argv)
 						glBlendFunc(GL_SRC_ALPHA, GL_ONE);
 						glDepthMask(GL_FALSE);
 			
-						auto mvLocation = glGetUniformLocation(volumeVisualizationProgram.id, "mvMat");
-						auto mvNormLocation = glGetUniformLocation(volumeVisualizationProgram.id, "mvNormMat");
-						auto pLocation = glGetUniformLocation(volumeVisualizationProgram.id, "pMat");
+						auto mvLocation = glGetUniformLocation(program->id, "mvMat");
+						auto mvNormLocation = glGetUniformLocation(program->id, "mvNormMat");
+						auto pLocation = glGetUniformLocation(program->id, "pMat");
 				
 						auto mvMat = view * shadowModel.transform;
 						auto mvNormMat = glm::transpose(glm::inverse(glm::mat3(mvMat)));

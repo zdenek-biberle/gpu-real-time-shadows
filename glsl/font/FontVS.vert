@@ -15,13 +15,14 @@ layout(std140) uniform GlobalMatrices
 layout (location = 0) in vec2 inPosition;
 layout (location = 1) in vec2 inCoordinates;
 
+uniform mat4 objectTransform;	
 
 out vec2 textureCoordinates; // Interpolated values from the vertex shaders
 
 void main()
 {
 
-	gl_Position = cameraToClipMatrix * worldToCameraMatrix * vec4(inPosition, 0.0, 1.0);
+	gl_Position = cameraToClipMatrix * worldToCameraMatrix * objectTransform * vec4(inPosition, 0.0, 1.0);
 	
 	textureCoordinates = inCoordinates;
 }

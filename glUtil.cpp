@@ -32,8 +32,8 @@ void GLAPIENTRY debugFunc(GLenum source, GLenum type, GLuint id, GLenum severity
 		case GL_DEBUG_SEVERITY_LOW_ARB: typeSeverity = "Low"; break;
 	}
 	
-	std::cout << errorType << " in " << srcName << " - " << id << " [" << typeSeverity << "]: " << std::string(message, length) << std::endl;
-	//std::cin.ignore(); //nvidia spamí debug vším možným, takže to komentuju
+	std::cout << errorType << " in " << srcName << " - " << id << " [" << typeSeverity << "]:\n" << std::string(message, length) << std::endl << std::endl;
+	std::cin.ignore(); //nvidia spamí debug vším možným, takže to komentuju
 }
 
 const char* glErrorToString(GLenum err)

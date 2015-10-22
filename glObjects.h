@@ -64,9 +64,12 @@ class UBO {
 public:
 
 	UBO() {
-	
+		glGenBuffers(1, &id);
+
 	};
-	~UBO();
+	~UBO() {
+		glDeleteBuffers(1, &id);
+	};
 
 	GLuint id;
 
@@ -78,6 +81,11 @@ public:
 	void unbind() {
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 	};
+
+
+	//Understand and add this too
+	//	glUniformBlockBinding(control->getProgram("font")->id, glGetUniformBlockIndex(control->getProgram("font")->id, "GlobalMatrices"), globalMatricesBindingIndex);
+
 
 };
 

@@ -1,7 +1,7 @@
 #pragma once
 
 
-//#include <glm/glm.hpp>    //uint
+#include <glm/glm.hpp>    //uint
 #include <GL/glew.h> //GLuint
 #include <glutil/glutil.h>
 #include <iostream>
@@ -9,8 +9,6 @@
 #include "Sampler.h"
 #include <fstream>
 #include "queryBuffer.h"
-
-
 
 
 
@@ -23,32 +21,36 @@ class ShaderProgram;
 //TODO - big problem with circular dependencies. figure that out..
 
 
-//#include "queryBuffer.h"
 
 using namespace glm;
 
-class Control {
+/*
+Stuff which is universally needed during the whole time program runs 
+and useful in many classes and situations.
+Owns all programs, samplers and maybe more..
+Keeps actual window dimensions and transformation matrices.
+*/
+class baseControl {
 
 public:
-	
-	~Control(void);
-	
+
+	~baseControl(void);
+
 
 	float windowWidth;
 	float windowHeight;
-	float aspectRatio;
-	unsigned int frame_number;  //not in fps????????
-	
-	int state;
-	
-	//bool pause;
-	bool stats;			//whether to display statistics - fps checks this - 
-	//bool help;			//whether to display help
+	unsigned int frame_number = 0;  //not in fps????????
 
-	
+	unsigned int state = 0;
+
+	bool pause = false;
+	bool stats = false;			//whether to display statistics - fps checks this - 
+	bool help = false;			//whether to display help
+
+
 
 	GLuint globalUniformBlockIndex;
-	GLuint modelToWorldMatrixUniform;
+	//GLuint modelToWorldMatrixUniform; //???
 
 
 
@@ -57,20 +59,39 @@ public:
 	Sampler *getSampler(std::string name);
 	Sampler *addSampler(std::string name);
 
+	
+
+
+	glutil::MatrixStack perspectiveMatrix;
+	glutil::MatrixStack orthographicMatrix;
+
+
+	void recomputeProjections(float windowWidth, float windowHeight, float fov = 90.0f);
+
+
+private:
+	std::vector<std::unique_ptr<ShaderProgram>> programs;
+	std::vector<std::unique_ptr<Sampler>> samplers;
+
+
+};
+
+
+class Control : public baseControl {
+
+public:
+	
+	~Control(void);
+
+
 	std::unique_ptr<Font> font;
 
 
 	std::unique_ptr<bufferedQuery> timestampQuery;
 	//std::unique_ptr<bufferedQuery> timeElapsedQuery;
 
-
-
-
-	glutil::MatrixStack perspectiveMatrix;
-	glutil::MatrixStack orthographicMatrix;
-
 	
-
+	
 	static Control* getInstance(){ 
 
 		if(instance == nullptr){ 
@@ -79,14 +100,12 @@ public:
 
 		return instance;
 	}
-
+	
 	
 private:
-	Control(void);
+	//Control(void);
 	static Control* instance;
-	std::vector<std::unique_ptr<ShaderProgram>> programs;
-	std::vector<std::unique_ptr<Sampler>> samplers;
-
+	
 
 };
 
