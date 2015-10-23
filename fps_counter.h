@@ -12,17 +12,19 @@ struct time_slot_item {
 
 /*
 Added values are updated only after render time stays below 33ms. -> avoid initial spike.
+
+//add somehow text size parameter
 */
 class  fps_counter {
 public:
 	//default value equals 300ms
 	//all times and interval are in nanoseconds
-	fps_counter(GLuint update_interval = 300000000) :
+	fps_counter(unsigned int text_size = 10, GLuint update_interval = 300000000) :
 		current_time(0), last_update_time(0), last_frame_time(0), frame(0), fps(0), render_time_avg(0), update_interval(update_interval),
 		avg_fps(0), avg_render_time(0), update_count(0), frames_count(0) {
 	
 			control = Control::getInstance();
-			stats = std::unique_ptr<dynamicText> (new dynamicText(control->font.get()));
+			stats = std::make_unique<dynamicText> (control->font.get());
 
 
 			frame_time_slots.resize(8);
@@ -34,6 +36,9 @@ public:
 			frame_time_slots[5].slot_name = "15fps  - smaller than 66.6ms - ";
 			frame_time_slots[6].slot_name = "10fps  - smaller than 100ms  - ";
 			frame_time_slots[7].slot_name = "lower  - greater than 100ms  - ";
+
+
+			this->text_size = text_size;
 	}
 
 
@@ -45,7 +50,7 @@ public:
 	float getAvgFps();
 	GLuint getFrameCount();
 	void setUpdateInterval(unsigned int ns);
-
+	void setTextSize(unsigned int new_size);
 	Control *control;
 	std::unique_ptr<dynamicText> stats;
 
@@ -65,7 +70,7 @@ private:
 	GLuint64 last_frame_time;
 	GLuint update_interval;
 
-
+	unsigned int text_size;
 	unsigned int frame;   //frame since last update
 	float fps;				//current fps value
 	float render_time_avg;	//current render time average per frame

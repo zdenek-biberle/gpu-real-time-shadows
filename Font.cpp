@@ -32,6 +32,9 @@ inline int next_power2(int n){
 /*
 Uses freetype library to create set of textures, geometry and texture coordinates.
 Geometry and texture coordinates are uploaded to GPU and appropriate attributes are enabled.
+
+size is still somewhat a MAGIC number..
+
 TODO - add check for the font file..
 TODO - isn't the "quad" creation labeled wrong? / upside down?
 */
@@ -53,11 +56,16 @@ bool Font::loadFont(std::string font_file, int size) {
 	//We want the result be of size
 	//Still dont know how this precisely works.. 
 	FT_Set_Char_Size(typeface, size * 72, size * 72, 300, 300); ///some problems with different fonts
-	//FT_Set_Pixel_Sizes(typeface,  size, size);
-
+	//FT_Set_Pixel_Sizes(typeface,  size, 0);
+	/*
+	The character widths and heights are specified in 1/64th of points. 
+	A point is a physical distance, equaling 1/72th of an inch. 
+	Normally, it is not equivalent to a pixel.
+	*/
+	//FT_Select_Size  - maybe try to go through them and select best matching..
 
 	pixelSize = size;
-	newLine = size + size / 2;
+	//newLine = size + size / 2;   //
 	
 	GLuint textureWidth = 0;
 	GLuint textureHeight = 0;
@@ -76,6 +84,7 @@ bool Font::loadFont(std::string font_file, int size) {
 		overallWidth = overallWidth + typeface->glyph->bitmap.width;
 	}
 
+	newLine = overallHeight;
 	//adding some wiggle room between glyphs to prevent unwanted bleeding through at higher mipmap levels
 	
 	textureWidth += 128 * wiggle_room;

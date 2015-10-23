@@ -6,18 +6,16 @@
 #include <glutil/glutil.h>
 #include <iostream>
 #include <memory>
-#include "Sampler.h"
+//#include "Sampler.h"
 #include <fstream>
 #include "queryBuffer.h"
 
-
-
+//class bufferedQuery;
 class dynamicText;    //because of problem with circular includes
 class staticText;	  //Control often uses and congregates a lot of elements which in turn sometimes need 
 class Font;			  //this class for window dimensions etc.
 class ShaderProgram;
-//class Sampler;
-
+class Sampler;
 //TODO - big problem with circular dependencies. figure that out..
 
 
@@ -81,13 +79,12 @@ class Control : public baseControl {
 
 public:
 	
-	~Control(void);
+	~Control(void) {};
 
 
 	std::unique_ptr<Font> font;
 
 
-	std::unique_ptr<bufferedQuery> timestampQuery;
 	//std::unique_ptr<bufferedQuery> timeElapsedQuery;
 
 	

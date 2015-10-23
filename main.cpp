@@ -117,11 +117,7 @@ int main(int argc, char** argv)
 	
 
 	std::unique_ptr<fps_counter> fps;
-	std::unique_ptr<Font> font;
 	std::unique_ptr<bufferedQuery> timestampQuery;
-	//std::unique_ptr<bufferedQuery> timeElapsedQuery;
-
-
 
 	std::cout << "Creating buffers" << std::endl;
 
@@ -277,11 +273,11 @@ int main(int argc, char** argv)
 	control->font->UBO = globalMatricesUBO;  //put to constructor or something.. setFunction
 	control->font->sampler = sampler;
 
-	control->font->loadFont("./Fonts/EleganTech-.ttf", 20);
+	control->font->loadFont("./Fonts/EleganTech-.ttf", 10);
 
 
-	//fps = std::make_unique<fps_counter>();
-	//timestampQuery = std::make_unique<bufferedQuery>(GL_TIMESTAMP);
+	fps = std::make_unique<fps_counter>(5);
+	timestampQuery = std::make_unique<bufferedQuery>(GL_TIMESTAMP);
 
 
 	glGenTextures(1, &stencilTextureID);
@@ -511,10 +507,10 @@ int main(int argc, char** argv)
 	
 
 	//////////////////ok.. problem is.. fontSampler Location returns -1
-	staticText test(control->font.get(), "this is test", 0, 0, 20);
-	test.position = vec3(control->windowWidth / 2, control->windowHeight / 2 - 100, 0.5);
-	test.positionIsCenter();
-	test.color = vec4(1.0, 0.0, 1.0, 1.0);
+	//staticText test(control->font.get(), "this is test", 0, 0, 5);
+	//test.position = vec3(10, 50, 0.5);
+	//test.positionIsCenter();
+	//test.color = vec4(1.0, 0.0, 1.0, 1.0);
 
 	auto run = true;
 	while (run)
@@ -580,6 +576,9 @@ int main(int argc, char** argv)
 							break;
 						case SDLK_F5: loadShaders = true; break;
 
+						case SDLK_i: control->stats = !control->stats; break;
+
+
 												
 					}
 					break;
@@ -591,7 +590,8 @@ int main(int argc, char** argv)
 		
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		//fps->
+		glQueryCounter(timestampQuery->query(), GL_TIMESTAMP);
+
 
 		control->getProgram("font")->useProgram();
 
@@ -607,7 +607,10 @@ int main(int argc, char** argv)
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
 		
-		test.print();
+		//test.print();
+
+		if (control->stats)
+			fps->stats->printAndSwapBuffers();
 
 		// Cas a pocitadla snimku a podobne veci //
 		{
@@ -917,6 +920,15 @@ int main(int argc, char** argv)
 				glDepthMask(GL_TRUE);
 			}
 		
+			//get result of previous timestamp query
+			timestampQuery->getResult(fps->current_time);
+
+			//update frame count and fps values
+			//+ dynamic info text if enabled in control.
+			fps->update();
+
+			control->frame_number = fps->getFrameCount();
+
 			SDL_GL_SwapWindow(window);
 		}
 		catch (std::exception& ex)
@@ -931,6 +943,7 @@ int main(int argc, char** argv)
 	glDeleteBuffers(1, &ibo);
 	glDeleteBuffers(1, &shadowVolumeBuffer);
 	glDeleteBuffers(1, &shadowVolumeComputationInfo);
+	glDeleteBuffers(1, &globalMatricesUBO);
 
 	glDeleteVertexArrays(1, &shadowVolumeVAO);
 	glDeleteVertexArrays(1, &depthVAO);

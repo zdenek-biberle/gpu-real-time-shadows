@@ -36,7 +36,7 @@ void fps_counter::update(){
 				"\nAvg render time: "+std::to_string(avg_render_time/update_count)+"ms\n"+
 				"Frames rendered: "+std::to_string(frames_count);
 				
-				stats->addTextData(msg, control->windowHeight, 10, 20, 10);
+				stats->addTextData(msg, control->windowHeight, 10, 20, text_size);
 				stats->uploadData();
 			}
 		}
@@ -87,6 +87,11 @@ void fps_counter::put_frame_into_time_slot(GLuint time){
 
 }
 
+void fps_counter::setTextSize(unsigned int new_size) {
+
+	text_size = new_size;
+
+}
 
 /*
 again in nanoseconds
