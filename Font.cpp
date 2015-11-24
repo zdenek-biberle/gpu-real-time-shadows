@@ -32,9 +32,6 @@ inline int next_power2(int n){
 /*
 Uses freetype library to create set of textures, geometry and texture coordinates.
 Geometry and texture coordinates are uploaded to GPU and appropriate attributes are enabled.
-
-size is still somewhat a MAGIC number..
-
 TODO - add check for the font file..
 TODO - isn't the "quad" creation labeled wrong? / upside down?
 */
@@ -45,27 +42,30 @@ bool Font::loadFont(std::string font_file, int size) {
 	const int wiggle_room = 5; //5pixels should be enough
 
 	//Initializes the library..
-	bool error = FT_Init_FreeType(&library);
+	FT_Error error = FT_Init_FreeType(&library);
 	
+	if (error) {
+		std::cout << "Failed to initialize FreeType library.\n";
+		return false;
+	}
+
 	//Loads up the typeface
 	error = FT_New_Face(library, font_file.c_str(), 0, &typeface);
 
-	if(error)
+	if (error) {
+		std::cout << "Failed to load face.\n";
 		return false;
-	
+	}
+
+	//http://www.freetype.org/freetype2/docs/tutorial/step1.html
 	//We want the result be of size
-	//Still dont know how this precisely works.. 
-	FT_Set_Char_Size(typeface, size * 72, size * 72, 300, 300); ///some problems with different fonts
-	//FT_Set_Pixel_Sizes(typeface,  size, 0);
-	/*
-	The character widths and heights are specified in 1/64th of points. 
-	A point is a physical distance, equaling 1/72th of an inch. 
-	Normally, it is not equivalent to a pixel.
-	*/
-	//FT_Select_Size  - maybe try to go through them and select best matching..
+	//Still dont know how this precisely works..  how to achieve particular pixel size - now it works?
+	//FT_Set_Char_Size(typeface, size * 64, size * 64, 300, 300); ///some problems with different fonts
+	FT_Set_Pixel_Sizes(typeface,  size, size);
+
 
 	pixelSize = size;
-	//newLine = size + size / 2;   //
+	newLine = size + size / 2;
 	
 	GLuint textureWidth = 0;
 	GLuint textureHeight = 0;
@@ -84,7 +84,6 @@ bool Font::loadFont(std::string font_file, int size) {
 		overallWidth = overallWidth + typeface->glyph->bitmap.width;
 	}
 
-	newLine = overallHeight;
 	//adding some wiggle room between glyphs to prevent unwanted bleeding through at higher mipmap levels
 	
 	textureWidth += 128 * wiggle_room;
@@ -93,7 +92,7 @@ bool Font::loadFont(std::string font_file, int size) {
 	textureWidth = next_power2(overallWidth);   //is this still necesssary? - tha power of 2?
 	textureHeight = next_power2(overallHeight); //
 
-	//note - there is some limitation on size of texture...
+	//note - there is some limitation on size of texture...?
 
 
 	//allocate enough space to contain the whole glyph atlas
@@ -185,7 +184,7 @@ bool Font::loadFont(std::string font_file, int size) {
 
 
 			
-		/*quad form   		//that -1 is there because bitmap sizes start from 1 and there were artifacts
+		/*quad form   	
 
 			glm::vec2( xPosition				/ ((float)textureWidth-1), bitmapHeight / (float)textureHeight),		//left bottom
 			glm::vec2( xPosition				/ ((float)textureWidth-1), 0.0f),										//left top
@@ -194,28 +193,28 @@ bool Font::loadFont(std::string font_file, int size) {
 		*/
 
 		//left bottom
-		characters[i].textureQuad.push_back(xPosition / ((float)textureWidth-1));
+		characters[i].textureQuad.push_back(xPosition / ((float)textureWidth));
 		characters[i].textureQuad.push_back(bitmapHeight / (float)textureHeight);
 
 		//left top
-		characters[i].textureQuad.push_back(xPosition / ((float)textureWidth-1));
+		characters[i].textureQuad.push_back(xPosition / ((float)textureWidth));
 		characters[i].textureQuad.push_back(0.0f);
 
 		//right bottom
-		characters[i].textureQuad.push_back((xPosition + bitmapWidth-1) / (float)textureWidth);
+		characters[i].textureQuad.push_back((xPosition + bitmapWidth) / (float)textureWidth);
 		characters[i].textureQuad.push_back(bitmapHeight / (float)textureHeight);
 
 		
 		//left top
-		characters[i].textureQuad.push_back(xPosition / ((float)textureWidth-1));
+		characters[i].textureQuad.push_back(xPosition / ((float)textureWidth));
 		characters[i].textureQuad.push_back(0.0f);
 
 		//right top
-		characters[i].textureQuad.push_back((xPosition + bitmapWidth-1) / (float)textureWidth);
+		characters[i].textureQuad.push_back((xPosition + bitmapWidth) / (float)textureWidth);
 		characters[i].textureQuad.push_back(0.0f);
 
 		//right bottom
-		characters[i].textureQuad.push_back((xPosition + bitmapWidth-1) / (float)textureWidth);
+		characters[i].textureQuad.push_back((xPosition + bitmapWidth) / (float)textureWidth);
 		characters[i].textureQuad.push_back(bitmapHeight / (float)textureHeight);
 
 	//shift current position and add wiggle_room
@@ -299,9 +298,7 @@ void Text::positionIsTopLeft(){
 staticText::staticText(Font *font, const std::string message, uint position_x, uint position_y, uint size) {
 
 	UBO = 0;
-	VAO = 0;
-	VBO = 0;
-
+	
 	this->font = font;
 	uploaded = false;
 
@@ -329,9 +326,6 @@ staticText::staticText(Font *font, const std::string message, uint position_x, u
 }  
 
 staticText::~staticText(){
-
-	glDeleteBuffers(1, &VAO);
-	glDeleteBuffers(1, &VBO);
 
 }
 
@@ -416,25 +410,21 @@ void Text::addTextData(const std::string &text, uint windowHeight, uint offset_x
 
 void staticText::initVAO(){
 
+	VAO.bind();
+	VBO.bind();
 
-	glGenVertexArrays(1, &VAO);
-	glBindVertexArray(VAO);
-
-		glGenBuffers(1, &VBO);
-		glBindBuffer(GL_ARRAY_BUFFER, VBO);
-
-			glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(GLfloat), data.data(), GL_STATIC_DRAW);
+		glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(GLfloat), data.data(), GL_STATIC_DRAW);
 			
-			//layout (location = 0) in vec2 inPosition; - triangles
-			//layout (location = 1) in vec2 inCoordinates; - texture
-			glEnableVertexAttribArray(0);
-			glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(GLfloat)*2 * 2, 0);  //x,y, tx,ty
-			glEnableVertexAttribArray(1);
-			glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(GLfloat)*2 * 2, (void*)(sizeof(GLfloat)*2));
+		//layout (location = 0) in vec2 inPosition; - triangles
+		//layout (location = 1) in vec2 inCoordinates; - texture
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(GLfloat)*2 * 2, 0);  //x,y, tx,ty
+		glEnableVertexAttribArray(1);
+		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(GLfloat)*2 * 2, (void*)(sizeof(GLfloat)*2));
 	
 	
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindVertexArray(0);
+	VAO.unbind();
+	VBO.unbind();
 
 }
 
@@ -444,15 +434,15 @@ Uploads data vector to GPU and clears it.
 void staticText::uploadData(){
 
 
-		glBindBuffer(GL_ARRAY_BUFFER, VBO);
+	VBO.bind();
 
-			glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(GLfloat), data.data(), GL_STATIC_DRAW);		//i dont even..
+		glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(GLfloat), data.data(), GL_STATIC_DRAW);		//i dont even..
 			
-		glBindBuffer(GL_ARRAY_BUFFER, 0);
+	VBO.unbind();
+
+	uploaded = true;
 	
-		uploaded = true;
-	
-		data.clear();
+	data.clear();
 	
 }
 
@@ -471,7 +461,7 @@ void staticText::print(float scale){
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 
-	glBindVertexArray(VAO);
+	VAO.bind();
 
 	glActiveTexture(GL_TEXTURE0 + 0);
 	glBindTexture(GL_TEXTURE_2D, font->texture.id);
@@ -485,53 +475,18 @@ void staticText::print(float scale){
 	font->sampler->bindToUnit(0);
 	vec3 rotations;
 
-	glutil::MatrixStack transformMatrix;
+
+	glm::mat4 transformMatrix(1.0);
+
+	animateTranslate(transformMatrix, position);
+
+	transformMatrix = glm::scale(transformMatrix, vec3(scale, scale, scale));
 		
-	transformMatrix.SetIdentity();
-		
-		for (int i = 0; i < moveAnimation.size(); i++){
-
-			if (moveAnimation[i].isPlaying()){
-
-				vec3 tmp = moveAnimation[i].getValue();
-				vec3 tmp2 = vec3(tmp.x, -tmp.y, tmp.z);
-
-				if (not moveAnimation[i].shifting){
-
-					position = position + tmp2;
-				}
-				else
-					transformMatrix.Translate(tmp2);
-			}
-		}
-		
-
-		transformMatrix.Translate(position.x, -position.y, position.z);
-
-
-		for (int i = 0; i < rotateAnimation.size(); i++){
-
-			if (rotateAnimation[i].isPlaying()){
-				//vec3 anim = rotateAnimation[i].getValue();
-
-				if (not rotateAnimation[i].shifting){
-					this->rotation = this->rotation + rotateAnimation[i].getValue();
-
-				}
-				else {
-					rotations = rotations + rotateAnimation[i].getValue();
-				}
-			}
-		}
-
-		transformMatrix.RotateX((rotation.x + rotations.x) * 360);
-		transformMatrix.RotateY((rotation.y + rotations.y) * 360);
-		transformMatrix.RotateZ((rotation.z + rotations.z) * 360);
-
-		transformMatrix.Scale(scale);
-
 		//glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(camMatrix.Top())); 
-		glUniformMatrix4fv(transformMatrixID, 1, false, glm::value_ptr(transformMatrix.Top()));
+	
+
+
+		glUniformMatrix4fv(transformMatrixID, 1, false, glm::value_ptr(transformMatrix));
 
 	
 		glDrawArrays(GL_TRIANGLES, 0, msg_length * 6); //6 vertices per character
@@ -541,7 +496,7 @@ void staticText::print(float scale){
 
 	font->sampler->unbindFromUnit(0);
 
-	glBindVertexArray(0);
+	VBO.unbind();
 
 	glEnable(GL_CULL_FACE);
 	//glEnable(GL_DEPTH_TEST);
@@ -561,7 +516,6 @@ void staticText::print(float scale){
 dynamicText::dynamicText(Font *font) {
 	
 	UBO = 0;
-	VAO = 0;
 	
 	this->font = font;
 	uploaded = false;
@@ -607,15 +561,13 @@ dynamicText::dynamicText(Font *font) {
 
 dynamicText::~dynamicText(){
 
-	glDeleteBuffers(1, &VAO);
 
 }
 
 void dynamicText::initVAO(){
 
 
-	glGenVertexArrays(1, &VAO);
-	glBindVertexArray(VAO);
+	VAO.bind();
 
 
 	glBindBuffer(GL_ARRAY_BUFFER, VBObuffer.getBack());
@@ -628,8 +580,8 @@ void dynamicText::initVAO(){
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(GLfloat) * 2 * 2, (void*)(sizeof(GLfloat) * 2));
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindVertexArray(0);
-	
+	VAO.unbind();
+
 
 
 }
@@ -664,7 +616,7 @@ void dynamicText::print(){
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 
-	glBindVertexArray(VAO);
+	VAO.bind();
 	glBindBuffer(GL_ARRAY_BUFFER, VBObuffer.getBack());	//bind back buffer with stable data
 
 		glEnableVertexAttribArray(0);
@@ -686,9 +638,10 @@ void dynamicText::print(){
 		font->sampler->bindToUnit(0);
 
 
-		glutil::MatrixStack transformMatrix;
+		glm::mat4 transformMatrix(1.0f);
 
-		transformMatrix.SetIdentity();
+		animateAll(transformMatrix, position, rotation);
+		/*
 
 		for (int i = 0; i < moveAnimation.size(); i++){
 
@@ -707,7 +660,7 @@ void dynamicText::print(){
 		}
 
 
-		transformMatrix.Translate(position.x, -position.y, position.z);
+		transformMatrix.Translate(position.x, -position.y, position.z);*/
 		/*
 		for (int i = 0; i < rotateAnimation.size(); i++){
 
@@ -726,7 +679,7 @@ void dynamicText::print(){
 		*/
 
 		//glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(transformMatrix.Top()));
-		glUniformMatrix4fv(transformMatrixID, 1, false, glm::value_ptr(transformMatrix.Top()));
+		glUniformMatrix4fv(transformMatrixID, 1, false, glm::value_ptr(transformMatrix));
 
 
 		glDrawArrays(GL_TRIANGLES, 0, msg_length * 6); //6 vertices per character
@@ -737,7 +690,7 @@ void dynamicText::print(){
 		//glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindVertexArray(0);
+	VAO.unbind();
 
 	glEnable(GL_CULL_FACE);
 	glEnable(GL_DEPTH_TEST);

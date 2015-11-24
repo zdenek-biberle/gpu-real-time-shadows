@@ -1,29 +1,29 @@
 #pragma once
 
-#include <GL/glew.h> 
+#include <GL\glew.h> //GLuint, glFunctions()
 #include <sstream>
 #include <vector>
 #include <memory>
 #include <algorithm>
 #include <glm/glm.hpp>   //uint
-#include <glutil/glutil.h>
+#include <glm\gtc\type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <ft2build.h>	//freetype
 #include FT_FREETYPE_H
 
-#include "Animation.h"
 #include "Control.h"
 #include "Texture.h"
 #include "Shader.h"
 
 
+#include "Animation.h"
 #include "doubleBuffer.h"
+#include "Animated.h"
+#include "glObjects.h"
 
 #define not !
 
 using namespace glm;
-
-//do class movable - adds animations, position n stuff
 
 
 
@@ -67,21 +67,22 @@ public:
 
 
 	std::vector<Character> characters;   //stores alphabet
-	uint newLine;
+	uint newLine;		//size of Y offset for new line
 
-	Sampler *sampler;		//move this to control - same as programs..  if not exists, complain
+	Sampler *sampler;		//move this to control - same as programs..
 	GLuint program;
 
 	bool loaded;
 	uint pixelSize;   //is a number used as size parameter when loading font.
 
-	Texture texture;   //character atlas.. contains all glyph textures
+	Texture texture;   //character atlas.. contains all glyphs
 
 };
 
 
 
 //TODO - still awkward positioning.. look into that..
+// - remove that silly thing - not needed anyway now..
 
 //do drawing as is done in rectangle class
 
@@ -90,7 +91,10 @@ Class Text is meant as class for static text to be displayed with Font.
 Font must be loaded or nothing will happen.
 The message is kept but not used after creation of Text
 */
-class Text { // issue when resized it stays fixed distance from bottom.. - reload function... rebuilds data + upload.., remember x, y, size
+class Text : public Animated { 
+	
+	// issue when resized it stays fixed distance from bottom.. - reload function... rebuilds data + upload.., remember x, y, size.... 
+	//OR you know just use dynamic text.. no one is forcing you to change it every frame..
 
 public:
 	
@@ -107,8 +111,8 @@ public:
 	vec4 color;
 	GLuint transformMatrixID;
 
-	std::vector<Animation> moveAnimation;  //it's vector to enable adding multiple animations together
-	std::vector<Animation> rotateAnimation;
+	//std::vector<Animation> moveAnimation;  //it's vector to enable adding multiple animations together
+	//std::vector<Animation> rotateAnimation;
 
 	vec3 position;		//..
 	vec3 rotation;		//..
@@ -130,7 +134,7 @@ protected:
 	bool uploaded;							//used in print to prevent unnecessary bother
 	std::vector<GLfloat> data;				//temporary store for drawing data. Deleted after upload.
 
-	GLuint VAO;
+	VAO VAO;
 	GLuint UBO;								//for toCamera transform.. currently set always identity
 	GLuint fontSampler;
 };
@@ -143,7 +147,7 @@ public:
 	~staticText();
 
 	void initVAO();							//creates VAO + VBO and binds attribute arrays
-	GLuint VBO;
+	VBO VBO;
 	void uploadData();						//uploads text geometry from data to VBO + clears data vector
 	void print(float scale = 1.0);	//draws with VAO
 };

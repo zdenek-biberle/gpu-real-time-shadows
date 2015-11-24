@@ -3,7 +3,6 @@
 
 #include <glm/glm.hpp>    //uint
 #include <GL/glew.h> //GLuint
-#include <glutil/glutil.h>
 #include <iostream>
 #include <memory>
 //#include "Sampler.h"
@@ -60,8 +59,8 @@ public:
 	
 
 
-	glutil::MatrixStack perspectiveMatrix;
-	glutil::MatrixStack orthographicMatrix;
+	glm::mat4 perspectiveMatrix;
+	glm::mat4 orthographicMatrix;
 
 
 	void recomputeProjections(float windowWidth, float windowHeight, float fov = 90.0f);

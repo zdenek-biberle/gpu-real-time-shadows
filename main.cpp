@@ -273,10 +273,10 @@ int main(int argc, char** argv)
 	control->font->UBO = globalMatricesUBO;  //put to constructor or something.. setFunction
 	control->font->sampler = sampler;
 
-	control->font->loadFont("./Fonts/EleganTech-.ttf", 10);
+	control->font->loadFont("./Fonts/EleganTech-.ttf", 20);
 
 
-	fps = std::make_unique<fps_counter>(5);
+	fps = std::make_unique<fps_counter>(20);
 	timestampQuery = std::make_unique<bufferedQuery>(GL_TIMESTAMP);
 
 
@@ -595,14 +595,14 @@ int main(int argc, char** argv)
 
 		control->getProgram("font")->useProgram();
 
-		glutil::MatrixStack camMatrix;
-		camMatrix.SetIdentity();
+		glm::mat4 camMatrix(1.0f);
+		
 
 
 		glBindBuffer(GL_UNIFORM_BUFFER, globalMatricesUBO);
 
-			glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(camMatrix.Top()));
-			glBufferSubData(GL_UNIFORM_BUFFER, 0,                 sizeof(glm::mat4), glm::value_ptr(control->orthographicMatrix.Top()));
+			glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(camMatrix));
+			glBufferSubData(GL_UNIFORM_BUFFER, 0,                 sizeof(glm::mat4), glm::value_ptr(control->orthographicMatrix));
 
 		glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
@@ -651,7 +651,7 @@ int main(int argc, char** argv)
 
 			environmentModel.transform = glm::rotate(glm::mat4(1.0f), modelRoty * 0.25f, glm::vec3(0.0f, 1.0f, 0.0f));
 
-			auto pMat = control->perspectiveMatrix.Top();
+			auto pMat = control->perspectiveMatrix;
 
 			
 
