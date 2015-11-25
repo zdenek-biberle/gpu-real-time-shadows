@@ -170,9 +170,15 @@ void main()
 		aidx[0] = inIndices[firstIdx];
 		aidx[1] = inIndices[firstIdx + 1];
 		aidx[2] = inIndices[firstIdx + 2];
-		vec3 a0 = position(inVertices[aidx[0]]);
-		vec3 a1 = position(inVertices[aidx[1]]);
-		vec3 a2 = position(inVertices[aidx[2]]);
+
+		InVertex vert1a = inVertices[aidx[0]];
+		InVertex vert2a = inVertices[aidx[1]];
+		InVertex vert3a = inVertices[aidx[2]];
+
+
+		vec3 a0 = position(vert1a);
+		vec3 a1 = position(vert2a);
+		vec3 a2 = position(vert3a);
 		
 		vec3 extrusionVec = extrusionDistance * normalize(lightDir);
 		
@@ -192,12 +198,15 @@ void main()
 			thisEdge[1] = edgeIndices[edgeIdx * 2 + 1];
 			int edgeMultiplicity = 0;
 			bool ignore = false;
-			uint edgeNode;
-			for (edgeNode = doEdgeLookup(thisEdge[0], thisEdge[1]);
-				edgeNode < indexCount && hasEdge(edgeLookup[edgeNode], thisEdge[0], thisEdge[1]);
-				edgeNode++)
+
+			//attempt at fix
+			uint edgeNode = doEdgeLookup(thisEdge[0], thisEdge[1]);
+			EdgeLookupNode node = edgeLookup[edgeNode];
+			bool hasEdge_bool = hasEdge(node, thisEdge[0], thisEdge[1]);
+
+			for (edgeNode; edgeNode < indexCount && hasEdge_bool; )
 			{
-				EdgeLookupNode node = edgeLookup[edgeNode];
+				//EdgeLookupNode node = edgeLookup[edgeNode];
 				
 				// kazdou hranu zpracovava trojuhelnik s nejnizsim indexem
 				if (node.triangleIdx < triangleId)
@@ -206,17 +215,32 @@ void main()
 					break;
 				}
 				
-				vec3 edge0 = position(inVertices[thisEdge[0]]);
-				vec3 edge1 = position(inVertices[thisEdge[1]]);
-				vec3 thirdVert = position(inVertices[node.idx2]);
+				InVertex vert1b = inVertices[thisEdge[0]];
+				InVertex vert2b = inVertices[thisEdge[1]];
+				InVertex vert3b = inVertices[node.idx2];
+
+				vec3 edge0 = position(vert1b);
+				vec3 edge1 = position(vert2b);
+				vec3 thirdVert = position(vert3b);
 			
 				edgeMultiplicity += isInFront(thirdVert, edge0, edge1, edge1 + lightDir) ? -1 : 1;
+
+				//this was originally in the for loop
+				edgeNode++;
+				node = edgeLookup[edgeNode];
+				hasEdge_bool = hasEdge(node, thisEdge[0], thisEdge[1]);
 			}
 			
 			if (!ignore && edgeMultiplicity != 0)
 			{
-				vec3 edge0 = position(inVertices[edgeIndices[edgeIdx * 2]]);
-				vec3 edge1 = position(inVertices[edgeIndices[edgeIdx * 2 + 1]]);
+
+				uint edge1x = edgeIndices[edgeIdx * 2];
+				uint edge2x = edgeIndices[edgeIdx * 2 + 1];
+				InVertex vert1c = inVertices[edge1x];
+				InVertex vert2c = inVertices[edge2x];
+
+				vec3 edge0 = position(vert1c);
+				vec3 edge1 = position(vert2c);
 				
 				uint triIdx = reserveTriangles(2);
 				emitTriangle(triIdx, edge0, edge1, edge0 + extrusionVec, edgeMultiplicity, 0);
