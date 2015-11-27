@@ -62,3 +62,25 @@ void baseControl::recomputeProjections(float windowWidth, float windowHeight, fl
 	orthographicMatrix = glm::ortho((float) 0, windowWidth, (float) 0, windowHeight);
 
 }
+
+bool Control::recompileProgram(std::string name) {
+
+	auto program = getProgram(name);
+
+	if (program != nullptr)
+		return program->recompile();
+
+	return false;
+}
+
+bool Control::recompileAllPrograms() {
+	bool success = true;
+
+	for (auto &program : programs) {
+
+		success &= program.get()->recompile();
+
+	}
+
+	return success;
+}
