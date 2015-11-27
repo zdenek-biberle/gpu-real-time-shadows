@@ -180,7 +180,7 @@ Shader *ShaderProgram::addShader(GLenum type, const std::string &filename) {
 }
 
 //Links shaders and detaches them before returning.
-bool ShaderProgram::linkProgram() {
+bool ShaderProgram::linkProgram(bool print_introspection) {
 
 	glLinkProgram(id);
 
@@ -207,7 +207,7 @@ bool ShaderProgram::linkProgram() {
 	
 	} else {
 
-		do_introspection();
+		do_introspection(print_introspection);
 	
 
 	}
@@ -256,9 +256,10 @@ return success;
 
 //ok idea is to use it to retrieve all ids/locations and names for everything so 
 //it can be saved in map or similar structure and doesn't have to be queried anymore.
-void ShaderProgram::do_introspection(){
+void ShaderProgram::do_introspection(bool print) {
 
-	std::cout << "PROGRAM: " << this->name << std::endl << std::endl;
+	if (print)
+		std::cout << "PROGRAM: " << this->name << std::endl << std::endl;
 
 	// https://www.opengl.org/wiki/GLAPI/glGetProgramResource
 	//TODO - put it in map
@@ -329,14 +330,12 @@ void ShaderProgram::do_introspection(){
 	}
 
 
-	//this->resources = resources;
 
 	//should print all..
+	if (print) {
 		printResources();
-		//std::cout << resources[i].name << "\tid: " << resources[i].propertyValues[1] << "\ttype: " << translateConstant(resources[i].propertyValues[0]) << std::endl;
-	
-
-	std::cout << std::endl << std::endl;
+		std::cout << std::endl << std::endl;
+	}
 }
 
 //implicit interfaceProperty is GL_ACTIVE_RESOURCES

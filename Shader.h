@@ -81,7 +81,7 @@ class ShaderProgram
 		~ShaderProgram();						
 
 	Shader *addShader(GLenum type, const std::string &filename);		//creates and ataches shader
-	bool linkProgram();							//links and detaches all shaders
+	bool linkProgram(bool print_introspection = false);							//links and detaches all shaders
 
 	void useProgram();
 	bool recompile();
@@ -104,7 +104,7 @@ private:
 
 	std::vector<std::unique_ptr<Shader>> shaders;
 	void detachShaders();
-	void do_introspection();
+	void do_introspection(bool print = false);
 
 
 }; 
