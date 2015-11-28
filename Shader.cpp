@@ -3,6 +3,8 @@
 
 Shader::Shader(GLenum type, const std::string &filename){
 
+	this->filename = filename;
+	this->type = type;
 	compile(type, filename);
 
 }
@@ -71,6 +73,38 @@ bool Shader::isCompiled(){
 	return compiled;
 }
 
+bool Shader::recompile() {
+
+	std::string strFilename = FindFileOrThrow(filename);
+	std::ifstream shaderFile(strFilename.c_str());
+	std::stringstream shaderData;
+	shaderData << shaderFile.rdbuf();
+	shaderFile.close();
+
+
+	const std::string& tmp = shaderData.str();
+
+	GLint sourceLength = (GLint) shaderData.str().size();
+	const GLchar *pText = static_cast<const GLchar *>(tmp.c_str());
+
+	glShaderSource(id, 1, &pText, &sourceLength);
+	glCompileShader(id);
+
+
+	GLint status;
+	glGetShaderiv(id, GL_COMPILE_STATUS, &status);
+
+	if (status == GL_FALSE) {
+
+		compiled = false;
+		return false;
+	}
+
+
+
+	compiled = true;
+	return true;
+}
 
 
 //////////////////////////////////////////	
@@ -80,6 +114,39 @@ bool Shader::isCompiled(){
 //////////////
 /////
 //
+
+void resource::print()
+{
+
+	std::cout << translateInterface(this->interface) << " " << name << std::endl;
+	
+	for (int i = 0; i < propertyLabels.size(); i++)	{
+		
+
+		if (propertyLabels[i] == GL_BLOCK_INDEX) {
+			if (propertyValues[i] != -1)
+				std::cout << "\t" << translateProperty(propertyLabels[i]) << " " << propertyValues[i] << std::endl;
+
+			continue;
+		}
+
+		if(propertyLabels[i] == GL_NAME_LENGTH)	{
+			//std::cout << name << " ";
+			continue;
+		}
+
+		if (propertyLabels[i] == GL_TYPE) {
+			std::cout << "\t" << translateProperty(propertyLabels[i]) << " " << translateType(propertyValues[i]) << std::endl;
+			continue;
+		}
+
+		std::cout << "\t" << translateProperty(propertyLabels[i]) << " " << propertyValues[i] << std::endl;
+
+	}
+
+	std::cout << "\n";
+
+}
 
 ShaderProgram::ShaderProgram(std::string Name) : name(Name){
 
@@ -92,19 +159,28 @@ ShaderProgram::~ShaderProgram(){
 }
 
 
-bool ShaderProgram::addShader(Shader* shader)
-{
-	if(not shader->isCompiled())
-		return false;
+Shader *ShaderProgram::addShader(GLenum type, const std::string &filename) {
 
-	shaders.push_back(shader);
-	glAttachShader(id, shader->id);
+	std::cout << "Compiling " << filename << std::endl;
 
-	return true;
+	//emplace should eliminate copying
+	shaders.emplace_back(std::make_unique<Shader>(type, filename));
+
+	
+
+	if (not shaders.back().get()->isCompiled()) {
+		shaders.pop_back();
+		return nullptr;
+	}
+
+	//shaders.push_back(shader);
+	glAttachShader(id, shaders.back().get()->id);
+
+	return shaders.back().get();
 }
 
 //Links shaders and detaches them before returning.
-bool ShaderProgram::linkProgram() {
+bool ShaderProgram::linkProgram(bool print_introspection) {
 
 	glLinkProgram(id);
 
@@ -131,14 +207,14 @@ bool ShaderProgram::linkProgram() {
 	
 	} else {
 
-		do_introspection();
+		do_introspection(print_introspection);
 	
 
 	}
 
 	detachShaders();
 
-	shaders.clear();
+	//shaders.clear();
 
 return linked;
 }
@@ -147,7 +223,7 @@ return linked;
 void ShaderProgram::detachShaders(){
 
 	for(size_t i = 0; i < shaders.size(); i++)
-		glDetachShader(id, shaders[i]->id);
+		glDetachShader(id, shaders[i].get()->id);
 
 
 }
@@ -159,13 +235,31 @@ void ShaderProgram::useProgram() {
 		glUseProgram(id);
 }
 
+bool ShaderProgram::recompile() {
+
+	
+
+	bool success = true;
+
+	for (auto &shader : shaders) {
+	
+		success &= shader.get()->recompile();
+		glAttachShader(id, shader->id);
+	}
+
+
+	linkProgram();
+
+return success;
+}
 
 
 //ok idea is to use it to retrieve all ids/locations and names for everything so 
 //it can be saved in map or similar structure and doesn't have to be queried anymore.
-void ShaderProgram::do_introspection(){
+void ShaderProgram::do_introspection(bool print) {
 
-	std::cout << "PROGRAM: " << this->name << std::endl << std::endl;
+	if (print)
+		std::cout << "PROGRAM: " << this->name << std::endl << std::endl;
 
 	// https://www.opengl.org/wiki/GLAPI/glGetProgramResource
 	//TODO - put it in map
@@ -186,8 +280,8 @@ void ShaderProgram::do_introspection(){
 
 		resources.push_back(queryResource(blockIndex, GL_UNIFORM_BLOCK, { GL_NAME_LENGTH, GL_NUM_ACTIVE_VARIABLES }));
 
-		std::cout << "BLOCK: " << resources.back().name << std::endl;
-		std::cout << "\nBLOCK VARS: " << std::endl;
+		//std::cout << "BLOCK: " << resources.back().name << std::endl;
+		//std::cout << "\nBLOCK VARS: " << std::endl;
 
 
 		GLint numActiveUnifs = 0;
@@ -200,15 +294,15 @@ void ShaderProgram::do_introspection(){
 		resource res = queryResource(blockIndex, GL_UNIFORM_BLOCK, { GL_ACTIVE_VARIABLES }, numActiveUnifs);
 
 		
-		for (int unifIx = 0; unifIx < numActiveUnifs; ++unifIx)
-		{
+		for (int unifIx = 0; unifIx < numActiveUnifs; ++unifIx)	{
+
 			resources.push_back(queryResource(res.propertyValues[unifIx], GL_UNIFORM, { GL_NAME_LENGTH, GL_LOCATION,  GL_TYPE }));
 			
 			//std::cout << resources.back().name << "\tid: " << resources.back().propertyValues[1] << "\ttype: " << translateType(resources.back().propertyValues[2]) << std::endl;
 		}
 	}
 
-	std::cout << "\nVARS: " << std::endl;
+	//std::cout << "\nVARS: " << std::endl;
 	
 	GLint numUniforms = getResourceCount(GL_UNIFORM);
 
@@ -217,16 +311,16 @@ void ShaderProgram::do_introspection(){
 		resources.push_back(queryResource(resource_index, GL_UNIFORM, { GL_NAME_LENGTH, GL_LOCATION, GL_TYPE, GL_BLOCK_INDEX }));
 	}
 
-	for (int i = 0; i < resources.size(); i++){
+	/*for (int i = 0; i < resources.size(); i++){
 
 		//if it belongs to block, skip it
-		//if (resources[i].propertyValues[3] != -1)
-		//	continue;
+		if (resources[i].propertyValues[3] != -1)
+			continue;
 
 		//std::cout << resources[i].name << "\tid: " << resources[i].propertyValues[1] << "\ttype: " << translateType(resources[i].propertyValues[2]) << std::endl;
-	}
+	}*/
 
-	std::cout << "\nINPUT: " << std::endl;
+	//std::cout << "\nINPUT: " << std::endl;
 
 	numUniforms = getResourceCount(GL_PROGRAM_INPUT);
 
@@ -235,14 +329,13 @@ void ShaderProgram::do_introspection(){
 		resources.push_back(queryResource(resource_index, GL_PROGRAM_INPUT, { GL_NAME_LENGTH, GL_LOCATION, GL_TYPE }));
 	}
 
-	//this->resources = resources;
+
 
 	//should print all..
+	if (print) {
 		printResources();
-		//std::cout << resources[i].name << "\tid: " << resources[i].propertyValues[1] << "\ttype: " << translateConstant(resources[i].propertyValues[0]) << std::endl;
-	
-
-	std::cout << std::endl << std::endl;
+		std::cout << std::endl << std::endl;
+	}
 }
 
 //implicit interfaceProperty is GL_ACTIVE_RESOURCES
@@ -252,6 +345,15 @@ GLint ShaderProgram::getResourceCount(GLenum programInterface, GLenum interfaceP
 	glGetProgramInterfaceiv(id, programInterface, interfaceProperty, &numberOfUniforms);
 
 	return numberOfUniforms;
+}
+
+void ShaderProgram::printResources()
+{
+
+	for (int i = 0; i < resources.size(); i++) {
+		
+		resources[i].print();
+	}
 }
 
 /*
@@ -306,25 +408,25 @@ return res;
 /*
 Prints resource. If labels are specified only those are printed.
 Generally GL_NAME_LENGTH is ignored and name is printed instead.
-*/
+*//*
 void ShaderProgram::printResources() {
 	using namespace std;
 
 	
 	for(auto &res : resources){
 
-		for (int i = 0; i < res.propertyLabels.size(); i++) {
-			if (res.propertyLabels[i] == GL_NAME_LENGTH) {
-				cout << res.name << " ";
+		for (int i = 0; i < res.second.propertyLabels.size(); i++) {
+			if (res.second.propertyLabels[i] == GL_NAME_LENGTH) {
+				cout << res.second.name << " ";
 				continue;
 			}
 
-			if (res.propertyLabels[i] == GL_TYPE) {
-				cout << translateProperty(res.propertyLabels[i]) << " " << translateType(res.propertyValues[i]) << endl;
+			if (res.second.propertyLabels[i] == GL_TYPE) {
+				cout << translateProperty(res.second.propertyLabels[i]) << " " << translateType(res.second.propertyValues[i]) << endl;
 				continue;
 			}
 
-			cout << translateProperty(res.propertyLabels[i]) << " " << res.propertyValues[i] << endl;
+			cout << translateProperty(res.second.propertyLabels[i]) << " " << res.second.propertyValues[i] << endl;
 		}
 
 	}
@@ -332,7 +434,7 @@ void ShaderProgram::printResources() {
 
 
 }
-
+*/
 
 /*
 Is meant to avoid constant querying or saving of locations everywhere.
@@ -340,19 +442,27 @@ Through this function can be retrieved resource type and location by resource na
 */
 GLint ShaderProgram::getResource(std::string resource_name, resource_property_enum resource_property) {
 	//I want to avoid exception when using at() and don't want to insert not present keys with []
-
-/*	if (resources.count(resource_name) != 1)
+/*
+	if (resources.count(resource_name) != 1)
 		return -1;
 
 	return resources[resource_name].propertyValues[resource_property];*/
 
-	for (unsigned int i = 0; i < resources.size(); i++) {
-		if (resources.at(i).name == resource_name)
-			for (unsigned int j = 0; j < resources.at(i).propertyValues.size(); j++) {
-				if (resources.at(i).propertyLabels.at(j) == resource_property)
-					return resources.at(i).propertyValues.at(j);
+	for (int i = 0; i < resources.size(); i++) {
+		
+		if(resources[i].name == resource_name) {
+			for (int j = 0; j < resources[i].propertyLabels.size(); j++) {
+				
+				if(resources[i].propertyLabels[j] == resource_property) {
+					return resources[i].propertyValues[j];
+				}
+
 			}
+		}
+			
 	}
+
+	return -1;
 }
 
 //yay regexps https://msdn.microsoft.com/en-us/library/2k3te2cs.aspx
@@ -360,7 +470,7 @@ GLint ShaderProgram::getResource(std::string resource_name, resource_property_en
 /*
 Translates gl enums of gl_type to string
 */
-std::string ShaderProgram::translateType(GLenum type) {
+std::string resource::translateType(GLenum type) {
 
 	switch (type) {
 
@@ -516,7 +626,10 @@ std::string ShaderProgram::translateType(GLenum type) {
 	}
 }
 
-std::string ShaderProgram::translateProperty(GLenum resource_property) {
+/*
+Translates gl enums to string
+*/
+std::string resource::translateProperty(GLenum resource_property) {
 
 	switch (resource_property) {
 		case GL_NAME_LENGTH:
@@ -579,5 +692,52 @@ std::string ShaderProgram::translateProperty(GLenum resource_property) {
 			return "TRANSFORM_FEEDBACK_BUFFER_STRIDE";*/
 		default:
 			return "unknown property name";
+	}
+}
+
+std::string resource::translateInterface(GLenum resource_property) {
+	switch (resource_property) {
+		case GL_UNIFORM:
+			return "UNIFORM";
+		case GL_UNIFORM_BLOCK:
+			return "UNIFORM_BLOCK";
+		case GL_PROGRAM_INPUT:
+			return "PROGRAM_INPUT";
+		case GL_PROGRAM_OUTPUT:
+			return "PROGRAM_OUTPUT";
+		case GL_BUFFER_VARIABLE:
+			return "BUFFER_VARIABLE";
+		case GL_SHADER_STORAGE_BLOCK:
+			return "SHADER_STORAGE_BLOCK";
+		case GL_ATOMIC_COUNTER_BUFFER:
+			return "ATOMIC_COUNTER_BUFFER";
+		case GL_VERTEX_SUBROUTINE:
+			return "VERTEX_SUBROUTINE";
+		case GL_TESS_CONTROL_SUBROUTINE:
+			return "TESS_CONTROL_SUBROUTINE";
+		case GL_TESS_EVALUATION_SUBROUTINE:
+			return "TESS_EVALUATION_SUBROUTINE";
+		case GL_GEOMETRY_SUBROUTINE:
+			return "GEOMETRY_SUBROUTINE";
+		case GL_FRAGMENT_SUBROUTINE:
+			return "FRAGMENT_SUBROUTINE";
+		case GL_COMPUTE_SUBROUTINE:
+			return "COMPUTE_SUBROUTINE";
+		case GL_VERTEX_SUBROUTINE_UNIFORM:
+			return "VERTEX_SUBROUTINE_UNIFORM";
+		case GL_TESS_CONTROL_SUBROUTINE_UNIFORM:
+			return "TESS_CONTROL_SUBROUTINE_UNIFORM";
+		case GL_TESS_EVALUATION_SUBROUTINE_UNIFORM:
+			return "TESS_EVALUATION_SUBROUTINE_UNIFORM";
+		case GL_GEOMETRY_SUBROUTINE_UNIFORM:
+			return "GEOMETRY_SUBROUTINE_UNIFORM";
+		case GL_FRAGMENT_SUBROUTINE_UNIFORM:
+			return "FRAGMENT_SUBROUTINE_UNIFORM";
+		case GL_COMPUTE_SUBROUTINE_UNIFORM:
+			return "COMPUTE_SUBROUTINE_UNIFORM";
+		case GL_TRANSFORM_FEEDBACK_VARYING:
+			return "TRANSFORM_FEEDBACK_VARYING";
+		default:
+			return "unknown interface name";
 	}
 }

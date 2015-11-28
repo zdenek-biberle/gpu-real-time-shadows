@@ -66,7 +66,7 @@ public:
 	void recomputeProjections(float windowWidth, float windowHeight, float fov = 90.0f);
 
 
-private:
+protected:
 	std::vector<std::unique_ptr<ShaderProgram>> programs;
 	std::vector<std::unique_ptr<Sampler>> samplers;
 
@@ -86,7 +86,8 @@ public:
 
 	//std::unique_ptr<bufferedQuery> timeElapsedQuery;
 
-	
+	bool recompileProgram(std::string name);
+	bool recompileAllPrograms();
 	
 	static Control* getInstance(){ 
 

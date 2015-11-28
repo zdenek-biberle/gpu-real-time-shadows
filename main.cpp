@@ -92,7 +92,7 @@ int main(int argc, char** argv)
 	}
 	else
 	{
-		std::cerr << "Není k dispozici debug output" << std::endl;
+		std::cerr << "Neni k dispozici debug output" << std::endl;
 	}
 	
 	
@@ -103,13 +103,13 @@ int main(int argc, char** argv)
 	auto environmentModel = loadModel(environmentModelFilename, vertices, indices);
 	auto shadowModel = loadModel(shadowModelFilename, vertices, indices);
 
-	std::cout << "Zjednodušujeme stínící model" << std::endl;
+	std::cout << "Zjednodusujeme stinici� model" << std::endl;
 	
 	std::vector<SimpleVertex> simplifiedVertices;
 	std::vector<GLuint> simplifiedIndices;
 	auto simplifiedModel = simplifyModel(shadowModel, vertices, indices, simplifiedVertices, simplifiedIndices);
 	
-	std::cout << "Generujeme buffer pro vyhledávání hran" << std::endl;
+	std::cout << "Generujeme buffer pro vyhledavani� hran" << std::endl;
 	
 	std::vector<EdgeLookupNode> edgeLookup;
 	generateEdgeLookup(simplifiedModel, simplifiedIndices, edgeLookup);
@@ -141,13 +141,11 @@ int main(int argc, char** argv)
 	
 
 	{
-		Shader Vshader(GL_VERTEX_SHADER, "./glsl/font/FontVS.vert");
-		Shader Fshader(GL_FRAGMENT_SHADER, "./glsl/font/FontFS.frag");
 
 		ShaderProgram *fontProgram = control->getProgram("font");
 
-		fontProgram->addShader(&Vshader);
-		fontProgram->addShader(&Fshader);
+		fontProgram->addShader(GL_VERTEX_SHADER, "./glsl/font/FontVS.vert");
+		fontProgram->addShader(GL_FRAGMENT_SHADER, "./glsl/font/FontFS.frag");
 
 		if (!fontProgram->linkProgram()) {
 			std::cin.ignore();
@@ -160,13 +158,11 @@ int main(int argc, char** argv)
 	}
 
 	{
-		Shader Vshader(GL_VERTEX_SHADER, "./glsl/scene/simple.vert");
-		Shader Fshader(GL_FRAGMENT_SHADER, "./glsl/scene/simple.frag");
 
 		ShaderProgram *simpleProgram = control->getProgram("simple");
 
-		simpleProgram->addShader(&Vshader);
-		simpleProgram->addShader(&Fshader);
+		simpleProgram->addShader(GL_VERTEX_SHADER, "./glsl/scene/simple.vert");
+		simpleProgram->addShader(GL_FRAGMENT_SHADER, "./glsl/scene/simple.frag");
 
 		if (!simpleProgram->linkProgram()){
 			std::cin.ignore();
@@ -175,13 +171,11 @@ int main(int argc, char** argv)
 	}
 
 	{
-		Shader Vshader(GL_VERTEX_SHADER, "./glsl/scene/stencil.vert");
-		Shader Fshader(GL_FRAGMENT_SHADER, "./glsl/scene/stencil.frag");
 
 		ShaderProgram *stencilProgram = control->getProgram("stencil");
 
-		stencilProgram->addShader(&Vshader);
-		stencilProgram->addShader(&Fshader);
+		stencilProgram->addShader(GL_VERTEX_SHADER, "./glsl/scene/stencil.vert");
+		stencilProgram->addShader(GL_FRAGMENT_SHADER, "./glsl/scene/stencil.frag");
 
 		if (!stencilProgram->linkProgram()){
 			std::cin.ignore();
@@ -190,13 +184,11 @@ int main(int argc, char** argv)
 	}
 
 	{
-		Shader Vshader(GL_VERTEX_SHADER, "./glsl/scene/vert.glsl");
-		Shader Fshader(GL_FRAGMENT_SHADER, "./glsl/scene/frag.glsl");
 
 		ShaderProgram *lightingProgram = control->getProgram("lighting");
 
-		lightingProgram->addShader(&Vshader);
-		lightingProgram->addShader(&Fshader);
+		lightingProgram->addShader(GL_VERTEX_SHADER, "./glsl/scene/vert.glsl");
+		lightingProgram->addShader(GL_FRAGMENT_SHADER, "./glsl/scene/frag.glsl");
 
 		if (!lightingProgram->linkProgram()){
 			std::cin.ignore();
@@ -206,11 +198,10 @@ int main(int argc, char** argv)
 	
 
 	{
-		Shader Cshader(GL_COMPUTE_SHADER, "./glsl/volume-computation/compute.glsl");
-		
+
 		ShaderProgram *volumeComputationProgram = control->getProgram("volumeComputation");
 
-		volumeComputationProgram->addShader(&Cshader);
+		volumeComputationProgram->addShader(GL_COMPUTE_SHADER, "./glsl/volume-computation/compute.glsl");
 
 		if (!volumeComputationProgram->linkProgram()) {
 			std::cin.ignore();
@@ -218,14 +209,11 @@ int main(int argc, char** argv)
 		}
 	}
 
-	
-	Shader vertexShaders(GL_VERTEX_SHADER, "./glsl/volume-visualization/vert.glsl");
-	Shader fragmentShaders(GL_FRAGMENT_SHADER, "./glsl/volume-visualization/frag.glsl");
-	
+
 	ShaderProgram *volumeVisualizationProgram = control->getProgram("volumeVisualization");
 
-	volumeVisualizationProgram->addShader(&vertexShaders);
-	volumeVisualizationProgram->addShader(&fragmentShaders);
+	volumeVisualizationProgram->addShader(GL_VERTEX_SHADER, "./glsl/volume-visualization/vert.glsl");
+	volumeVisualizationProgram->addShader(GL_FRAGMENT_SHADER, "./glsl/volume-visualization/frag.glsl");
 
 	if (!volumeVisualizationProgram->linkProgram()) {
 		std::cin.ignore();
@@ -451,7 +439,7 @@ int main(int argc, char** argv)
 	glBindVertexArray(0);
 
 
-	std::cout << "Generujeme pomocné buffery pro výpočet shadow volume" << std::endl;
+	std::cout << "Generujeme pomocne buffery pro vypoc�et shadow volume" << std::endl;
 	
 	GLuint simpleVbo;
 	GLuint simpleIbo;
@@ -477,7 +465,7 @@ int main(int argc, char** argv)
 
 
 
-	std::cout << "Vstupujeme do hlavní smyčky" << std::endl;
+	std::cout << "Vstupujeme do hlavn�i smycky" << std::endl;
 	
 	float modelRoty = 0.0f;
 	float roty = 0.0f;
@@ -502,17 +490,6 @@ int main(int argc, char** argv)
 	ShadowVolumeComputationInfo shadowVolumeInfo;
 	
 	
-
-
-
-	
-
-	//////////////////ok.. problem is.. fontSampler Location returns -1
-	//staticText test(control->font.get(), "this is test", 0, 0, 5);
-	//test.position = vec3(10, 50, 0.5);
-	//test.positionIsCenter();
-	//test.color = vec4(1.0, 0.0, 1.0, 1.0);
-
 	auto run = true;
 	while (run)
 	{	
@@ -572,12 +549,14 @@ int main(int argc, char** argv)
 						case SDLK_t: drawShadowVolume = !drawShadowVolume; break;
 						case SDLK_c: 
 							CPU = !CPU; 
-							if (CPU) std::cout << "Nyní se používá CPU" << std::endl;
-							else std::cout << "Nyní se používá GPU" << std::endl;
+							if (CPU) std::cout << "Nyni se pouziva CPU" << std::endl;
+							else std::cout << "Nyni� se pouzivacout GPU" << std::endl;
 							break;
-						case SDLK_F5: loadShaders = true; break;
+						case SDLK_F5: control->recompileAllPrograms(); break;
 
 						case SDLK_i: control->stats = !control->stats; break;
+
+						case SDLK_ESCAPE: run = false;
 
 
 												
@@ -589,30 +568,15 @@ int main(int argc, char** argv)
 			 }
 		}
 		
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+		//glCullFace(GL_BACK);
+		//glFrontFace(GL_CCW);
 
 		glQueryCounter(timestampQuery->query(), GL_TIMESTAMP);
 
 
-		control->getProgram("font")->useProgram();
-
-		glm::mat4 camMatrix(1.0f);
 		
-
-
-		glBindBuffer(GL_UNIFORM_BUFFER, globalMatricesUBO);
-
-			glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(camMatrix));
-			glBufferSubData(GL_UNIFORM_BUFFER, 0,                 sizeof(glm::mat4), glm::value_ptr(control->orthographicMatrix));
-
-		glBindBuffer(GL_UNIFORM_BUFFER, 0);
-
-		
-		//test.print();
-
-		if (control->stats)
-			fps->stats->printAndSwapBuffers();
-
 		// Cas a pocitadla snimku a podobne veci //
 		{
 			auto lastTicks = ticks;
@@ -630,9 +594,9 @@ int main(int argc, char** argv)
 				auto totalSeconds = frameTickCounter * 0.001;
 				auto totalComputationSeconds = frameComputationTickCounter * 0.001;
 				
-				std::cout << "Vykresleno " << totalFrames << " snímků za " << totalSeconds << " s (tj. " << totalFrames / totalSeconds << " FPS)" << std::endl;
-				std::cout << "Průměrná doba vykreslování jendoho snímku: " << totalSeconds / totalFrames << " s" << std::endl;
-				std::cout << "Průměrná doba výpočtu stínového tělesa: " << totalComputationSeconds / totalFrames << " s" << std::endl;
+				//std::cout << "Vykresleno " << totalFrames << " snímků za " << totalSeconds << " s (tj. " << totalFrames / totalSeconds << " FPS)" << std::endl;
+				//std::cout << "Průměrná doba vykreslování jendoho snímku: " << totalSeconds / totalFrames << " s" << std::endl;
+				//std::cout << "Průměrná doba výpočtu stínového tělesa: " << totalComputationSeconds / totalFrames << " s" << std::endl;
 				
 				lastDisplayedFrameCounter = frameCounter;
 				frameTickCounter = 0;
@@ -760,7 +724,7 @@ int main(int argc, char** argv)
 			glDepthFunc(GL_LESS);
 			glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
-			//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 			glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 
@@ -921,6 +885,25 @@ int main(int argc, char** argv)
 				glDepthMask(GL_TRUE);
 			}
 		
+			control->getProgram("font")->useProgram();
+
+			glm::mat4 camMatrix(1.0f);
+
+
+
+			glBindBuffer(GL_UNIFORM_BUFFER, globalMatricesUBO);
+
+			glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(camMatrix));
+			glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(control->orthographicMatrix));
+
+			glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+
+
+			if (control->stats)
+				fps->stats->printAndSwapBuffers();
+
+
 			//get result of previous timestamp query
 			timestampQuery->getResult(fps->current_time);
 
