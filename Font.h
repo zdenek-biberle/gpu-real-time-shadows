@@ -1,12 +1,12 @@
 #pragma once
 
-#include <GL\glew.h> //GLuint, glFunctions()
+#include <GL/glew.h> //GLuint, glFunctions()
 #include <sstream>
 #include <vector>
 #include <memory>
 #include <algorithm>
 #include <glm/glm.hpp>   //uint
-#include <glm\gtc\type_ptr.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <ft2build.h>	//freetype
 #include FT_FREETYPE_H
@@ -20,8 +20,6 @@
 #include "doubleBuffer.h"
 #include "Animated.h"
 #include "glObjects.h"
-
-#define not !
 
 using namespace glm;
 
@@ -134,7 +132,7 @@ protected:
 	bool uploaded;							//used in print to prevent unnecessary bother
 	std::vector<GLfloat> data;				//temporary store for drawing data. Deleted after upload.
 
-	VAO VAO;
+	VAO vao;
 	GLuint UBO;								//for toCamera transform.. currently set always identity
 	GLuint fontSampler;
 };
@@ -147,7 +145,7 @@ public:
 	~staticText();
 
 	void initVAO();							//creates VAO + VBO and binds attribute arrays
-	VBO VBO;
+	VBO vbo;
 	void uploadData();						//uploads text geometry from data to VBO + clears data vector
 	void print(float scale = 1.0);	//draws with VAO
 };

@@ -8,7 +8,7 @@
 #include "Shader.h"
 #include <vector>
 #include <iostream>
-#define not !
+
 
 //http://stackoverflow.com/questions/440144/in-opengl-is-there-a-way-to-get-a-list-of-all-uniforms-attribs-used-by-a-shade
 //https://www.opengl.org/wiki/Program_Introspection

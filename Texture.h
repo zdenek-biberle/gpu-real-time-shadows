@@ -3,7 +3,7 @@
 #include <GL/glew.h>
 #include <string>
 
-#include <glimg\glimg.h>
+#include <glimg/glimg.h>
 
 #include <iostream>
 #include "Sampler.h"

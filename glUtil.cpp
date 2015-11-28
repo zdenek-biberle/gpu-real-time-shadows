@@ -33,7 +33,7 @@ void GLAPIENTRY debugFunc(GLenum source, GLenum type, GLuint id, GLenum severity
 	}
 	
 	std::cout << errorType << " in " << srcName << " - " << id << " [" << typeSeverity << "]:\n" << std::string(message, length) << std::endl << std::endl;
-	std::cin.ignore(); //nvidia spamí debug vším možným, takže to komentuju
+	//std::cin.ignore(); //nvidia spamí debug vším možným, takže to komentuju
 }
 
 const char* glErrorToString(GLenum err)

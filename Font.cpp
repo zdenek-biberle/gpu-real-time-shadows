@@ -410,8 +410,8 @@ void Text::addTextData(const std::string &text, uint windowHeight, uint offset_x
 
 void staticText::initVAO(){
 
-	VAO.bind();
-	VBO.bind();
+	vao.bind();
+	vbo.bind();
 
 		glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(GLfloat), data.data(), GL_STATIC_DRAW);
 			
@@ -423,8 +423,8 @@ void staticText::initVAO(){
 		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(GLfloat)*2 * 2, (void*)(sizeof(GLfloat)*2));
 	
 	
-	VAO.unbind();
-	VBO.unbind();
+	vao.unbind();
+	vbo.unbind();
 
 }
 
@@ -434,11 +434,11 @@ Uploads data vector to GPU and clears it.
 void staticText::uploadData(){
 
 
-	VBO.bind();
+	vbo.bind();
 
 		glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(GLfloat), data.data(), GL_STATIC_DRAW);		//i dont even..
 			
-	VBO.unbind();
+	vbo.unbind();
 
 	uploaded = true;
 	
@@ -461,7 +461,7 @@ void staticText::print(float scale){
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 
-	VAO.bind();
+	vao.bind();
 
 	glActiveTexture(GL_TEXTURE0 + 0);
 	glBindTexture(GL_TEXTURE_2D, font->texture.id);
@@ -496,7 +496,7 @@ void staticText::print(float scale){
 
 	font->sampler->unbindFromUnit(0);
 
-	VBO.unbind();
+	vao.unbind();
 
 	glEnable(GL_CULL_FACE);
 	//glEnable(GL_DEPTH_TEST);
@@ -567,7 +567,7 @@ dynamicText::~dynamicText(){
 void dynamicText::initVAO(){
 
 
-	VAO.bind();
+	vao.bind();
 
 
 	glBindBuffer(GL_ARRAY_BUFFER, VBObuffer.getBack());
@@ -580,7 +580,7 @@ void dynamicText::initVAO(){
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(GLfloat) * 2 * 2, (void*)(sizeof(GLfloat) * 2));
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	VAO.unbind();
+	vao.unbind();
 
 
 
@@ -616,7 +616,7 @@ void dynamicText::print(){
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 
-	VAO.bind();
+	vao.bind();
 	glBindBuffer(GL_ARRAY_BUFFER, VBObuffer.getBack());	//bind back buffer with stable data
 
 		glEnableVertexAttribArray(0);
@@ -690,7 +690,7 @@ void dynamicText::print(){
 		//glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
-	VAO.unbind();
+	vao.unbind();
 
 	glEnable(GL_CULL_FACE);
 	glEnable(GL_DEPTH_TEST);

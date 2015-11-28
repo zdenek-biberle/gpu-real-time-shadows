@@ -71,6 +71,7 @@ int main(int argc, char** argv)
 	
 	auto glCtx = SDL_GL_CreateContext(window);
 	
+	glewExperimental = GL_TRUE;
 	GLenum err = glewInit();
 	if (GLEW_OK != err)
 	{
