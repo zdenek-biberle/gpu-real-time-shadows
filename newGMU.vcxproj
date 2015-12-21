@@ -44,13 +44,14 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>../glm/;../SDL2/include/;../glew/include/;../freetype-2.5.1/include;../glimg/include;../glutil/include;../glutil/include;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../glm/;../SDL2/include/;../glew/include/;../freetype-2.5.1/include;../glimg/include;</AdditionalIncludeDirectories>
       <CompileAs>CompileAsCpp</CompileAs>
+      <AdditionalOptions>/Za %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>../glew/lib/Release/Win32/;../SDL2/lib/x86/;../glutil/lib;../freetype-2.5.1/objs/win32/vc2010;../glimg/lib</AdditionalLibraryDirectories>
-      <AdditionalDependencies>OpenGL32.lib;glu32.lib;SDL2.lib;SDL2main.lib;glew32.lib;glutilD.lib;kernel32.lib;user32.lib;gdi32.lib;glimgD.lib;freetype251_D.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>../glew/lib/Release/Win32/;../SDL2/lib/x86/;../freetype-2.6.1/objs\vc2010\Win32;../glimg/lib;</AdditionalLibraryDirectories>
+      <AdditionalDependencies>OpenGL32.lib;glu32.lib;SDL2.lib;SDL2main.lib;glew32.lib;kernel32.lib;user32.lib;gdi32.lib;glimgD.lib;freetype261d.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
     </Link>
   </ItemDefinitionGroup>
@@ -61,20 +62,22 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>../glm/;../SDL2/include/;../glew/include/;../freetype-2.5.1/include;../glimg/include;../glutil/include;../glutil/include;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../glm/;../SDL2/include/;../glew/include/;../freetype-2.5.1/include;../glimg/include;</AdditionalIncludeDirectories>
+      <AdditionalOptions>/Za %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>../glew/lib/Release/Win32/;../SDL2/lib/x86/;../glutil/lib;../freetype-2.5.1/objs/win32/vc2010;../glimg/lib;</AdditionalLibraryDirectories>
-      <AdditionalDependencies>OpenGL32.lib;glu32.lib;SDL2.lib;SDL2main.lib;glew32.lib;kernel32.lib;user32.lib;gdi32.lib;glimg.lib;glutil.lib;freetype251.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>../glew/lib/Release/Win32/;../SDL2/lib/x86/;../freetype-2.6.1/objs\vc2010\Win32;../glimg/lib;</AdditionalLibraryDirectories>
+      <AdditionalDependencies>OpenGL32.lib;glu32.lib;SDL2.lib;SDL2main.lib;glew32.lib;kernel32.lib;user32.lib;gdi32.lib;glimg.lib;freetype261.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <EntryPointSymbol>
       </EntryPointSymbol>
       <SubSystem>Console</SubSystem>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Animated.cpp" />
     <ClCompile Include="Animation.cpp" />
     <ClCompile Include="CatmullRom.cpp" />
     <ClCompile Include="Control.cpp" />
@@ -97,6 +100,7 @@
     <ClCompile Include="vertexTypes.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Animated.h" />
     <ClInclude Include="Animation.h" />
     <ClInclude Include="CatmullRom.h" />
     <ClInclude Include="Control.h" />
@@ -131,6 +135,9 @@
     <None Include="glsl\scene\stencil.vert" />
     <None Include="glsl\scene\vert.glsl" />
     <None Include="glsl\volume-computation\compute.glsl" />
+  </ItemGroup>
+  <ItemGroup>
+    <Font Include="Fonts\EleganTech-.ttf" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
