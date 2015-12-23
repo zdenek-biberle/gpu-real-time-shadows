@@ -1,4 +1,4 @@
-#version 430
+#version 450
 
 uniform mat4 pMat;
 uniform mat4 mvMat;

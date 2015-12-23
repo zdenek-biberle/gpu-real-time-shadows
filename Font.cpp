@@ -641,43 +641,7 @@ void dynamicText::print(){
 		glm::mat4 transformMatrix(1.0f);
 
 		animateAll(transformMatrix, position, rotation);
-		/*
-
-		for (int i = 0; i < moveAnimation.size(); i++){
-
-			if (moveAnimation[i].isPlaying()){
-
-				vec3 tmp = moveAnimation[i].getValue();
-				vec3 tmp2 = vec3(tmp.x, -tmp.y, tmp.z);
-
-				if (not moveAnimation[i].shifting){
-
-					position = position + tmp2;
-				}
-				else
-					transformMatrix.Translate(tmp2);
-			}
-		}
-
-
-		transformMatrix.Translate(position.x, -position.y, position.z);*/
-		/*
-		for (int i = 0; i < rotateAnimation.size(); i++){
-
-			if (rotateAnimation[i].isPlaying()){
-				vec3 anim = rotateAnimation[i].getValue();
-
-				transformMatrix.RotateX(anim.x * 360);
-				transformMatrix.RotateY(anim.y * 360);
-				transformMatrix.RotateZ(anim.z * 360);
-			}
-		}
-
-		transformMatrix.RotateX(rotation.x * 360);
-		transformMatrix.RotateY(rotation.y * 360);
-		transformMatrix.RotateZ(rotation.z * 360);
-		*/
-
+		
 		//glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(transformMatrix.Top()));
 		glUniformMatrix4fv(transformMatrixID, 1, false, glm::value_ptr(transformMatrix));
 

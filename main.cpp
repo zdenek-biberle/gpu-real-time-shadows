@@ -64,7 +64,7 @@ int main(int argc, char** argv)
 		SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
 
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 5);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);	//must be enabled to allow debug output callback
 	//SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_PROFILE_COMPATIBILITY);
@@ -123,7 +123,6 @@ int main(int argc, char** argv)
 	std::cout << "Creating buffers" << std::endl;
 
 	GLuint shadowVolumeVerticesCount;
-	GLuint stencilFrameBufferID;
 	GLuint stencilTextureID;
 
 	//add programs to control..
@@ -152,7 +151,7 @@ int main(int argc, char** argv)
 			exit(1);
 		}
 
-		//WTF???
+		//why? it isnt even used
 		GLuint sampl = glGetUniformLocation(fontProgram->id, "fontSampler");
 		GLuint trans = glGetUniformLocation(fontProgram->id, "objectTransform");
 	}
@@ -268,11 +267,10 @@ int main(int argc, char** argv)
 	fps = std::make_unique<fps_counter>(20);
 	timestampQuery = std::make_unique<bufferedQuery>(GL_TIMESTAMP);
 
-
+	glActiveTexture(GL_TEXTURE0);
 	glGenTextures(1, &stencilTextureID);
 	glBindTexture(GL_TEXTURE_2D, stencilTextureID);
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_R32I, windowWidth, windowHeight, 0, GL_RED_INTEGER, GL_INT, nullptr);
-	glBindTexture(GL_TEXTURE_2D, 0);
 	glBindTexture(GL_TEXTURE_2D, 0);
 		
 	GLuint vbo;
@@ -514,6 +512,7 @@ int main(int argc, char** argv)
 
 							glViewport(0, 0, windowWidth, windowHeight);
 
+							glActiveTexture(GL_TEXTURE0);
 							glDeleteTextures(1, &stencilTextureID);
 							glGenTextures(1, &stencilTextureID);
 							glBindTexture(GL_TEXTURE_2D, stencilTextureID);
@@ -609,8 +608,8 @@ int main(int argc, char** argv)
 
 			
 			auto translate = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, dist));
-			auto rotate =	glm::rotate(translate, rotx, glm::vec3(1.0f, 0.0f, 0.0f));
-			auto view =		glm::rotate(rotate, roty, glm::vec3(0.0f, 1.0f, 0.0f));
+			auto rotate =	 glm::rotate(translate, rotx, glm::vec3(1.0f, 0.0f, 0.0f));
+			auto view =		 glm::rotate(rotate, roty, glm::vec3(0.0f, 1.0f, 0.0f));
 
 			shadowModel.transform =	glm::rotate(glm::mat4(1.0f), modelRoty, glm::vec3(0.0f, 1.0f, 0.0f));
 
@@ -619,11 +618,14 @@ int main(int argc, char** argv)
 			auto pMat = control->perspectiveMatrix;
 
 			
+			///////////////////////////////////////////////////////////////////////////////////////
+			/*
+			Compute cast. CPU a GPU by mely delat totez.
+			*/
 
 			{
 				unsigned computationStartTicks = SDL_GetTicks();
-				auto lightDir = glm::mat3(glm::inverse(shadowModel.transform)) * glm::normalize(glm::vec3(-1.0f, -1.0f, -1.0f));
-				shadowVolumeInfo.triCount = 0;
+				glm::vec3 lightDir = glm::mat3(glm::inverse(shadowModel.transform)) * glm::normalize(glm::vec3(-1.0f, -1.0f, -1.0f));
 
 				if (CPU)
 				{
@@ -642,7 +644,7 @@ int main(int argc, char** argv)
 						);
 
 					glBindBuffer(GL_ARRAY_BUFFER, shadowVolumeBufferCpu);
-					glBufferData(GL_ARRAY_BUFFER, shadowVolumeVertices.size() * sizeof(ShadowVolumeVertex), shadowVolumeVertices.data(), GL_STREAM_DRAW);
+					glBufferData(GL_ARRAY_BUFFER, shadowVolumeVertices.size() * sizeof(ShadowVolumeVertex), shadowVolumeVertices.data(), GL_STREAM_READ);   
 					//glBufferSubData(GL_ARRAY_BUFFER, 0, shadowVolumeVertices.size() * sizeof(ShadowVolumeVertex), shadowVolumeVertices.data());
 					glBindBuffer(GL_ARRAY_BUFFER, 0);
 
@@ -655,8 +657,10 @@ int main(int argc, char** argv)
 
 					program->useProgram();
 
+					shadowVolumeInfo.triCount = 0;
+
 					glBindBuffer(GL_SHADER_STORAGE_BUFFER, shadowVolumeComputationInfo);
-					glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(ShadowVolumeComputationInfo), &shadowVolumeInfo, GL_STREAM_READ);  //nulovani
+					glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(ShadowVolumeComputationInfo), &shadowVolumeInfo, GL_STREAM_READ);  //nulovani	
 					//glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(ShadowVolumeComputationInfo), &shadowVolumeInfo);
 					glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
@@ -684,7 +688,7 @@ int main(int argc, char** argv)
 					for (unsigned i = 0; i < 5; i++)
 						glBindBufferBase(GL_SHADER_STORAGE_BUFFER, i, 0);
 
-					glBindBuffer(GL_SHADER_STORAGE_BUFFER, shadowVolumeComputationInfo);		//hadam ze pro ctverec by to melo byt 12 a ne 6
+					glBindBuffer(GL_SHADER_STORAGE_BUFFER, shadowVolumeComputationInfo);		//hadam ze pro ctverec by to melo byt 12 a ne 6... cool po "opravach" compute shaderu vraci ted 8
 					glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(ShadowVolumeComputationInfo), &shadowVolumeInfo);	//precteni nove hodnoty
 					glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
@@ -697,16 +701,33 @@ int main(int argc, char** argv)
 			}
 
 
+			///////////////////////////////////////////////////////////////////////////////////////
+			/*
+			Vykreslovaci cast. Uvedeni do vychoziho stavu.
+			*/
 
+
+			glDisable(GL_CULL_FACE);
+			glDisable(GL_BLEND);
+			glEnable(GL_DEPTH_TEST);
+			glDepthMask(GL_TRUE);
+			glDepthFunc(GL_LESS);
+			glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 
 			//this bit should clear stencil texture between runs
-			GLint clearColor[] = { 0 };
-			glBindTexture(GL_TEXTURE_2D, stencilTextureID);
+			//GLint clearColor[] = { 0 };
+			//glBindTexture(GL_TEXTURE_2D, stencilTextureID);
+			//GLuint texture,	GLint level,	GLenum format,	GLenum type,	const void * data
 			glClearTexImage(stencilTextureID, 0, GL_RED_INTEGER, GL_INT, nullptr);	//
-			glBindTexture(GL_TEXTURE_2D, 0);
+			//glBindTexture(GL_TEXTURE_2D, 0);
 
 			///////////////////////////////////////////////////////////////////////////////////////////////////////
+			/*
+			Vykresleni pouze s prazdnymi shadery pro naplneni depth bufferu.
+			*/
 
 			ShaderProgram *program = control->getProgram("simple");
 
@@ -717,15 +738,8 @@ int main(int argc, char** argv)
 
 			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);	//
 
-		
-			glDisable(GL_BLEND);
-			glEnable(GL_DEPTH_TEST);
-			glDepthMask(GL_TRUE);
-			glDepthFunc(GL_LESS);
-			glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
+			
+			//nepotrebujeme zaznamenavat barvu
 			glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 
 			auto mvLocation = glGetUniformLocation(program->id, "mvMat");
@@ -745,8 +759,13 @@ int main(int argc, char** argv)
 			glBindVertexArray(0);
 
 			glUseProgram(0);
-			///////////////////////////////////////////////////////////////////////////////////////////////////////
 
+
+
+			///////////////////////////////////////////////////////////////////////////////////////////////////////
+			/*
+			Vykresleni vypocitaneho shadow volume v compute casti a ulozeni multiplicity pro kazdu zasazeny pixel.
+			*/
 			program = control->getProgram("stencil");
 
 			program->useProgram();
@@ -785,6 +804,9 @@ int main(int argc, char** argv)
 			glUseProgram(0);
 
 			///////////////////////////////////////////////////////////////////////////////////////////////////////
+			/*
+			Vykresleni sceny se vsim vsudy. Vyuziva pro vykresleni stinu informace ze "stencil" textury.
+			*/
 			
 			program = control->getProgram("lighting");
 
@@ -808,6 +830,7 @@ int main(int argc, char** argv)
 					auto mvNormLocation = glGetUniformLocation(program->id, "mvNormMat");
 					pLocation = glGetUniformLocation(program->id, "pMat");
 
+					//	GLuint unit, GLuint texture, GLint level, GLboolean layered, GLint layer, GLenum access, GLenum format
 					glBindImageTexture(0, stencilTextureID, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32I);
 
 					glUniformMatrix4fv(pLocation, 1, GL_FALSE, glm::value_ptr(pMat));
@@ -837,6 +860,12 @@ int main(int argc, char** argv)
 
 			glUseProgram(0);
 	
+
+			///////////////////////////////////////////////////////////////////////////////////////////////////////
+			/*
+			Vizualizace shadow volume.
+			*/
+
 			if (control->getProgram("volumeVisualization")->id != 0 && drawShadowVolume)
 			{
 				
@@ -885,10 +914,15 @@ int main(int argc, char** argv)
 				glDepthMask(GL_TRUE);
 			}
 		
+			
+			///////////////////////////////////////////////////////////////////////////////////////////////////////
+			/*
+			Na zaver vykresleni statistik behu.
+			*/
+
 			control->getProgram("font")->useProgram();
 
 			glm::mat4 camMatrix(1.0f);
-
 
 
 			glBindBuffer(GL_UNIFORM_BUFFER, globalMatricesUBO);
@@ -912,6 +946,8 @@ int main(int argc, char** argv)
 			fps->update();
 
 			control->frame_number = fps->getFrameCount();
+
+
 
 			SDL_GL_SwapWindow(window);
 		}

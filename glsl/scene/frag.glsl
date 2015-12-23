@@ -1,4 +1,4 @@
-#version 430
+#version 450
 
 uniform vec3 lightDir;
 layout(binding = 0, r32i) uniform readonly iimage2D stencilTexture;
