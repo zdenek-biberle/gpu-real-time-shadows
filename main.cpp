@@ -677,8 +677,10 @@ int main(int argc, char** argv)
 					//glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(ShadowVolumeComputationInfo), &shadowVolumeInfo);
 					glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
-					auto lightDirLocation = glGetUniformLocation(program->id, "lightDir");
-					glUniform3fv(lightDirLocation, 1, glm::value_ptr(lightDir));
+					//auto lightDirLocation = glGetUniformLocation(program->id, "lightDir");
+					auto lightPosLocation = glGetUniformLocation(program->id, "lightPos");
+
+					glUniform3fv(lightPosLocation, 1, glm::value_ptr(lightPosition));
 
 					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, simpleVbo);
 					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, simpleIbo);

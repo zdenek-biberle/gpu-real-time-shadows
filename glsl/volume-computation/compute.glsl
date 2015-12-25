@@ -4,8 +4,9 @@ layout (local_size_x = 128) in;
 
 uniform uint indexCount;
 uniform uint indexOffset;
-uniform vec3 lightDir = vec3(-1.0, -1.0, -1.0);
+//uniform vec3 lightDir = vec3(-1.0, -1.0, -1.0);
 uniform float extrusionDistance = 100.0;
+uniform vec3 lightPos;
 
 struct InVertex
 {
@@ -67,7 +68,7 @@ bool isFrontFacing(vec3 a, vec3 b, vec3 c)
 	vec3 ab = b - a;
 	vec3 ac = c - a;
 	vec3 n = cross(ab, ac);
-	return dot(normalize(n), normalize(lightDir)) < 0;
+	return dot(normalize(n), -normalize(lightPos)) < 0;
 	//return a.x > 0 && b.x > 0 && c.x > 0;
 }
 
@@ -162,6 +163,8 @@ uint doEdgeLookup(uint edge0, uint edge1)
 void main()
 {
 	uint triangleId = gl_GlobalInvocationID.x;
+	vec3 lightDir = -normalize(lightPos);
+
 	if (triangleId * 3 < indexCount)
 	{
 		uint firstIdx = indexOffset + triangleId * 3;
@@ -180,13 +183,13 @@ void main()
 		vec3 a1 = position(vert2a);
 		vec3 a2 = position(vert3a);
 		
-		vec3 extrusionVec = extrusionDistance * normalize(lightDir);
+		//vec3 extrusionVec = extrusionDistance * normalize(lightDir);
 		
 		if (isFrontFacing(a0, a1, a2))
 		{
 			uint triIdx = reserveTriangles(2);	//returns triCount before adding the number.. effectively it's index of next free triangle "slot" in array
 			emitTriangle(triIdx, a0, a1, a2, -2, 1);
-			emitTriangle(triIdx + 1, a0 + extrusionVec, a2 + extrusionVec, a1 + extrusionVec, -2, 1);	
+			emitTriangle(triIdx + 1, a0 + (a0 - lightPos) * extrusionDistance, a2 + (a2 - lightPos) * extrusionDistance, a1 + (a1 - lightPos) * extrusionDistance, -2, 1);	
 		}
 		
 		uint edgeIndices[] = {aidx[0], aidx[1], aidx[1], aidx[2], aidx[2], aidx[0]};
@@ -243,8 +246,8 @@ void main()
 				vec3 edge1 = position(vert2c);
 				
 				uint triIdx = reserveTriangles(2);
-				emitTriangle(triIdx, edge0, edge1, edge0 + extrusionVec, edgeMultiplicity, 0);
-				emitTriangle(triIdx + 1, edge1, edge1 + extrusionVec, edge0 + extrusionVec, edgeMultiplicity, 0);
+				emitTriangle(triIdx, edge0, edge1, edge0 + (edge0 - lightPos) * extrusionDistance, edgeMultiplicity, 0);
+				emitTriangle(triIdx + 1, edge1, edge1 + (edge1 - lightPos) * extrusionDistance, edge0 + (edge0 - lightPos) * extrusionDistance, edgeMultiplicity, 0);
 			}
 		}
 	}
