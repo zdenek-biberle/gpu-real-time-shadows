@@ -50,7 +50,7 @@ int main(int argc, char** argv)
 
 	auto environmentModelFilename = std::string(argv[1]);
 	auto shadowModelFilename = std::string(argv[2]);
-	vec3 lightPosition = vec3(-1.0, -1.0, -1.0);
+	vec3 lightPosition = vec3(10.0, 10.0, 10.0);
 	SDL_Init(SDL_INIT_VIDEO);
 
 	int windowWidth = 1024;
@@ -638,7 +638,7 @@ int main(int argc, char** argv)
 
 			{
 				unsigned computationStartTicks = SDL_GetTicks();
-				glm::vec3 lightDir = glm::mat3(glm::inverse(shadowModel.transform)) * glm::normalize(lightPosition);
+				glm::vec3 lightDir = glm::mat3(glm::inverse(shadowModel.transform)) * -glm::normalize(lightPosition);
 
 				if (CPU)
 				{
@@ -648,7 +648,7 @@ int main(int argc, char** argv)
 					shadowVolumeInfo = compute(
 						simplifiedModel.baseIndex,
 						simplifiedModel.indexCount,
-						lightDir,
+						lightPosition,
 						100.0f,
 						simplifiedVertices,
 						simplifiedIndices,
@@ -852,7 +852,7 @@ int main(int argc, char** argv)
 
 					if (lightDirLocation != -1)
 					{
-						auto lightDir = glm::normalize(lightPosition);			//ne nahodou * -1???
+						auto lightDir = -glm::normalize(lightPosition);		
 						lightDir = glm::mat3(view) * lightDir;
 						glUniform3fv(lightDirLocation, 1, glm::value_ptr(lightDir));
 					}

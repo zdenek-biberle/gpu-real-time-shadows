@@ -86,7 +86,8 @@ unsigned doEdgeLookup(const std::vector<EdgeLookupNode>& edgeLookup, unsigned ed
 ShadowVolumeComputationInfo compute(
 	unsigned indexOffset,
 	unsigned indexCount,
-	const glm::vec3& lightDir,
+	//const glm::vec3& lightDir,
+	const glm::vec3& lightPos,
 	float extrusionDistance,
 	const std::vector<SimpleVertex>& inVertices, 
 	const std::vector<GLuint>& inIndices, 
@@ -110,12 +111,13 @@ ShadowVolumeComputationInfo compute(
 			glm::vec3 a1 = position(inVertices[aidx[1]]);
 			glm::vec3 a2 = position(inVertices[aidx[2]]);
 
-			glm::vec3 extrusionVec = extrusionDistance * glm::normalize(lightDir);
+			
+			glm::vec3 lightDir = -glm::normalize(lightPos);
 
 			if (isFrontFacing(lightDir, a0, a1, a2))
 			{
 				emitTriangle(outVertices, a0, a1, a2, -2, 1);
-				emitTriangle(outVertices, a0 + extrusionVec, a2 + extrusionVec, a1 + extrusionVec, -2, 1);
+				emitTriangle(outVertices, a0 + (a0 - lightPos) * extrusionDistance, a2 + (a2 - lightPos) * extrusionDistance, a1 + (a1 - lightPos) * extrusionDistance, -2, 1);
 				triCount += 2;
 			}
 
@@ -154,8 +156,8 @@ ShadowVolumeComputationInfo compute(
 					glm::vec3 edge0 = position(inVertices[edgeIndices[edgeIdx * 2]]);
 					glm::vec3 edge1 = position(inVertices[edgeIndices[edgeIdx * 2 + 1]]);
 
-					emitTriangle(outVertices, edge0, edge1, edge0 + extrusionVec, edgeMultiplicity, 0);
-					emitTriangle(outVertices, edge1, edge1 + extrusionVec, edge0 + extrusionVec, edgeMultiplicity, 0);
+					emitTriangle(outVertices, edge0, edge1, edge0 + (edge0 - lightPos) * extrusionDistance, edgeMultiplicity, 0);
+					emitTriangle(outVertices, edge1, edge1 + (edge1 - lightPos) * extrusionDistance, edge0 + (edge0 - lightPos) * extrusionDistance, edgeMultiplicity, 0);
 					triCount += 2;
 				}
 			}
