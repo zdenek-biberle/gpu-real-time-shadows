@@ -1,7 +1,7 @@
 #version 450
 
 uniform vec3 lightDir;
-layout(binding = 0, r32i) uniform readonly iimage2D stencilTexture;
+layout(binding = 0, R32I) uniform readonly iimage2D stencilTexture;
 
 in VertexOutput
 {

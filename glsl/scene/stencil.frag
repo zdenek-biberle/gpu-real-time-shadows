@@ -7,7 +7,7 @@ in VertexOutput
 	flat int multiplicity;
 } IN;
 
-layout(binding = 0, r32i) uniform iimage2D stencilTexture;	// r32i to support   int  imageAtomicAdd(IMAGE_INFO, int data);
+layout(binding = 0, R32I) uniform iimage2D stencilTexture;	// r32i to support   int  imageAtomicAdd(IMAGE_INFO, int data);
 
 void main()
 {
