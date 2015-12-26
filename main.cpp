@@ -795,13 +795,20 @@ int main(int argc, char** argv)
 			}
 
 			
-
+			/*
 			glDepthMask(GL_FALSE);
 			glDepthFunc(GL_LESS);
 			glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);  //just in case
 			glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+			*/
+			glEnable(GL_DEPTH_TEST);
+			glDepthMask(GL_FALSE);
+			glDepthFunc(GL_GEQUAL);
 
-			
+
+			glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);  //just in case
+			//glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+
 				glBindImageTexture(0, stencilTextureID, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32I);
 
 				mvLocation = glGetUniformLocation(program->id, "mvMat");

@@ -19,5 +19,5 @@ void main()
 		m = -IN.multiplicity;
 	}
 
-	imageAtomicAdd(stencilTexture, ivec2(gl_FragCoord.xy), m);
+	imageAtomicAdd(stencilTexture, ivec2(gl_FragCoord.xy), -m);
 }
