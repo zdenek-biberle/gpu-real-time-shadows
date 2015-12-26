@@ -9,7 +9,7 @@
 ShadowVolumeComputationInfo compute(
 	unsigned indexOffset,
 	unsigned indexCount,
-	const glm::vec3& lightDir,
+	const glm::vec3& lightPos,
 	float extrusionDistance,
 	const std::vector<SimpleVertex>& inVertices, 
 	const std::vector<GLuint>& inIndices, 

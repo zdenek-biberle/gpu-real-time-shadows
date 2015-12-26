@@ -21,6 +21,7 @@ struct ModelInfo
 	unsigned int baseIndex;
 	unsigned int indexCount;
 	glm::mat4 transform;
+	glm::vec3 color;
 };
 
 //static_assert(sizeof(ShadowVolumeVertex) == sizeof(float) * 8, "Velikost struktury ShadowVolumeVertex neni 8 floatu");

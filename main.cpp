@@ -103,6 +103,8 @@ int main(int argc, char** argv)
 	auto environmentModel = loadModel(environmentModelFilename, vertices, indices);
 	auto shadowModel = loadModel(shadowModelFilename, vertices, indices);
 
+	environmentModel.color = vec3(0.8, 0.2, 0.1);
+	shadowModel.color = vec3(0.2, 0.8, 0.1);
 	std::cout << "Zjednodusujeme stinici­ model" << std::endl;
 	
 	std::vector<SimpleVertex> simplifiedVertices;
@@ -137,6 +139,8 @@ int main(int argc, char** argv)
 	control->addProgram("volumeComputation");
 	control->addProgram("volumeVisualization");
 	control->addProgram("font");
+	control->addProgram("caster");
+
 	
 
 	{
@@ -195,6 +199,18 @@ int main(int argc, char** argv)
 		}
 	}
 	
+	{
+
+		ShaderProgram *casterProgram = control->getProgram("caster");
+
+		casterProgram->addShader(GL_VERTEX_SHADER, "./glsl/scene/caster.vert");
+		casterProgram->addShader(GL_FRAGMENT_SHADER, "./glsl/scene/caster.frag");
+
+		if (!casterProgram->linkProgram()) {
+			std::cin.ignore();
+			exit(1);
+		}
+	}
 
 	{
 
@@ -741,7 +757,7 @@ int main(int argc, char** argv)
 
 			///////////////////////////////////////////////////////////////////////////////////////////////////////
 			/*
-			Vykresleni pouze s prazdnymi shadery pro naplneni depth bufferu.
+			Vykresleni pouze s prazdnymi shadery pro naplneni depth bufferu. - Pouze prostredi bez shadow casteru
 			*/
 
 			ShaderProgram *program = control->getProgram("simple");
@@ -762,13 +778,13 @@ int main(int argc, char** argv)
 
 
 
-			for (auto modelInfo : scene) {
-				auto mvMat = view * modelInfo->transform;
+			//for (auto modelInfo : scene) {
+				auto mvMat = view * scene[0]->transform;
 				auto mvNormMat = glm::transpose(glm::inverse(glm::mat3(mvMat)));
 				glUniformMatrix4fv(mvLocation, 1, GL_FALSE, glm::value_ptr(mvMat));
 				glUniformMatrix4fv(pLocation, 1, GL_FALSE, glm::value_ptr(pMat));
-				glDrawElements(GL_TRIANGLES, (GLsizei)modelInfo->indexCount, GL_UNSIGNED_INT, reinterpret_cast<void*>(modelInfo->baseIndex * sizeof(GLuint)));
-			}
+				glDrawElements(GL_TRIANGLES, (GLsizei) scene[0]->indexCount, GL_UNSIGNED_INT, reinterpret_cast<void*>(scene[0]->baseIndex * sizeof(GLuint)));
+			//}
 
 			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 			glBindVertexArray(0);
@@ -839,7 +855,7 @@ int main(int argc, char** argv)
 
 				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
 
-				
+					glEnable(GL_DEPTH_TEST);
 					glDepthMask(GL_TRUE);
 					glDepthFunc(GL_LESS);
 					glClear(GL_DEPTH_BUFFER_BIT); 
@@ -866,16 +882,19 @@ int main(int argc, char** argv)
 						glUniform3fv(lightDirLocation, 1, glm::value_ptr(lightDir));
 					}
 
+					GLuint colorLocation = glGetUniformLocation(program->id, "color");
 
-					for (auto modelInfo : scene) {
-						auto mvMat = view * modelInfo->transform;
-						auto mvNormMat = glm::transpose(glm::inverse(glm::mat3(mvMat)));
+					//for (auto modelInfo : scene) {
+						mvMat = view * scene[0]->transform;
+						mvNormMat = glm::transpose(glm::inverse(glm::mat3(mvMat)));
 						glUniformMatrix4fv(mvLocation, 1, GL_FALSE, glm::value_ptr(mvMat));
 						glUniformMatrix3fv(mvNormLocation, 1, GL_FALSE, glm::value_ptr(mvNormMat));
-						glDrawElements(GL_TRIANGLES, (GLsizei)modelInfo->indexCount, GL_UNSIGNED_INT, reinterpret_cast<void*>(modelInfo->baseIndex * sizeof(GLuint)));
-					}
+						glUniform3fv(colorLocation, 1, glm::value_ptr(scene[0]->color));
 
-					
+						glDrawElements(GL_TRIANGLES, (GLsizei) scene[0]->indexCount, GL_UNSIGNED_INT, reinterpret_cast<void*>(scene[0]->baseIndex * sizeof(GLuint)));
+					//}
+
+
 					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
 				glBindVertexArray(0);
@@ -883,6 +902,59 @@ int main(int argc, char** argv)
 			glUseProgram(0);
 	
 
+
+			program = control->getProgram("caster");
+
+			program->useProgram();
+
+				glBindVertexArray(sceneVAO);
+
+					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+
+					glEnable(GL_DEPTH_TEST);
+					glDepthMask(GL_TRUE);
+					glDepthFunc(GL_LESS);
+					glClear(GL_DEPTH_BUFFER_BIT);
+					glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+
+					//draw scene with lighting
+
+					//reuse previously declared variables
+					mvLocation = glGetUniformLocation(program->id, "mvMat");
+					mvNormLocation = glGetUniformLocation(program->id, "mvNormMat");
+					pLocation = glGetUniformLocation(program->id, "pMat");
+
+					//	GLuint unit, GLuint texture, GLint level, GLboolean layered, GLint layer, GLenum access, GLenum format
+					glBindImageTexture(0, stencilTextureID, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32I);
+
+					glUniformMatrix4fv(pLocation, 1, GL_FALSE, glm::value_ptr(pMat));
+
+					lightDirLocation = glGetUniformLocation(program->id, "lightDir");
+
+					if (lightDirLocation != -1) {
+						auto lightDir = -glm::normalize(lightPosition);
+						lightDir = glm::mat3(view) * lightDir;
+						glUniform3fv(lightDirLocation, 1, glm::value_ptr(lightDir));
+					}
+
+					colorLocation = glGetUniformLocation(program->id, "color");
+
+					//for (auto modelInfo : scene) {
+					mvMat = view * scene[1]->transform;
+					mvNormMat = glm::transpose(glm::inverse(glm::mat3(mvMat)));
+					glUniformMatrix4fv(mvLocation, 1, GL_FALSE, glm::value_ptr(mvMat));
+					glUniformMatrix3fv(mvNormLocation, 1, GL_FALSE, glm::value_ptr(mvNormMat));
+					glUniform3fv(colorLocation, 1, glm::value_ptr(scene[0]->color));
+
+					glDrawElements(GL_TRIANGLES, (GLsizei) scene[1]->indexCount, GL_UNSIGNED_INT, reinterpret_cast<void*>(scene[1]->baseIndex * sizeof(GLuint)));
+					//}
+
+
+					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+				glBindVertexArray(0);
+
+			glUseProgram(0);
 			///////////////////////////////////////////////////////////////////////////////////////////////////////
 			/*
 			Vizualizace shadow volume.

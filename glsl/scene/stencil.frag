@@ -15,6 +15,7 @@ void main()
 
 	if(gl_FrontFacing == true){
 		m = IN.multiplicity;
+		
 	} else {
 		m = -IN.multiplicity;
 	}
