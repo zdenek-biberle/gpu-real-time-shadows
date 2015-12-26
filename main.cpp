@@ -944,7 +944,7 @@ int main(int argc, char** argv)
 					mvNormMat = glm::transpose(glm::inverse(glm::mat3(mvMat)));
 					glUniformMatrix4fv(mvLocation, 1, GL_FALSE, glm::value_ptr(mvMat));
 					glUniformMatrix3fv(mvNormLocation, 1, GL_FALSE, glm::value_ptr(mvNormMat));
-					glUniform3fv(colorLocation, 1, glm::value_ptr(scene[0]->color));
+					glUniform3fv(colorLocation, 1, glm::value_ptr(scene[1]->color));
 
 					glDrawElements(GL_TRIANGLES, (GLsizei) scene[1]->indexCount, GL_UNSIGNED_INT, reinterpret_cast<void*>(scene[1]->baseIndex * sizeof(GLuint)));
 					//}

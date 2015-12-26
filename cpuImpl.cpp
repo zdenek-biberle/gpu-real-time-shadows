@@ -114,10 +114,13 @@ ShadowVolumeComputationInfo compute(
 			
 			glm::vec3 lightDir = -glm::normalize(lightPos);
 
+			//je to privracena cast modelu - frontcap
 			if (isFrontFacing(lightDir, a0, a1, a2))
 			{
-				emitTriangle(outVertices, a0, a1, a2, -2, 1);
-				emitTriangle(outVertices, a0 + (a0 - lightPos) * extrusionDistance, a2 + (a2 - lightPos) * extrusionDistance, a1 + (a1 - lightPos) * extrusionDistance, -2, 1);
+				emitTriangle(outVertices, a0, a1, a2, -2, 1);		
+
+				//duplikace jako backcap
+				emitTriangle(outVertices, a0 + glm::normalize(a0 - lightPos) * extrusionDistance, a2 + glm::normalize(a2 - lightPos) * extrusionDistance, a1 + glm::normalize(a1 - lightPos) * extrusionDistance, -2, 1);
 				triCount += 2;
 			}
 
@@ -156,8 +159,9 @@ ShadowVolumeComputationInfo compute(
 					glm::vec3 edge0 = position(inVertices[edgeIndices[edgeIdx * 2]]);
 					glm::vec3 edge1 = position(inVertices[edgeIndices[edgeIdx * 2 + 1]]);
 
-					emitTriangle(outVertices, edge0, edge1, edge0 + (edge0 - lightPos) * extrusionDistance, edgeMultiplicity, 0);
-					emitTriangle(outVertices, edge1, edge1 + (edge1 - lightPos) * extrusionDistance, edge0 + (edge0 - lightPos) * extrusionDistance, edgeMultiplicity, 0);
+					//vytahnuti stran
+					emitTriangle(outVertices, edge0, edge1, edge0 + glm::normalize(edge0 - lightPos) * extrusionDistance, edgeMultiplicity, 0);
+					emitTriangle(outVertices, edge1, edge1 + glm::normalize(edge1 - lightPos) * extrusionDistance, edge0 + glm::normalize(edge0 - lightPos) * extrusionDistance, edgeMultiplicity, 0);
 					triCount += 2;
 				}
 			}
