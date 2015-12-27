@@ -120,7 +120,7 @@ ShadowVolumeComputationInfo compute(
 				emitTriangle(outVertices, a0, a1, a2, -2, 1);		
 
 				//duplikace jako backcap
-				emitTriangle(outVertices, a0 + glm::normalize(a0 - lightPos) * extrusionDistance, a2 + glm::normalize(a2 - lightPos) * extrusionDistance, a1 + glm::normalize(a1 - lightPos) * extrusionDistance, -2, 1);
+				emitTriangle(outVertices, a0 + glm::normalize(a0 - lightPos) * extrusionDistance, a1 + glm::normalize(a1 - lightPos) * extrusionDistance, a2 + glm::normalize(a2 - lightPos) * extrusionDistance, -2, 1);
 				triCount += 2;
 			}
 

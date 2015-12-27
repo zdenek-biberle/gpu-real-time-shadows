@@ -50,7 +50,7 @@ int main(int argc, char** argv)
 
 	auto environmentModelFilename = std::string(argv[1]);
 	auto shadowModelFilename = std::string(argv[2]);
-	vec3 lightPosition = vec3(10.0, 10.0, 10.0);
+	vec3 lightPosition = vec3(4.0, 4.0, 4.0);
 	SDL_Init(SDL_INIT_VIDEO);
 
 	int windowWidth = 1024;
@@ -531,7 +531,7 @@ int main(int argc, char** argv)
 							windowWidth = event.window.data1;
 							windowHeight = event.window.data2;
 
-							control->recomputeProjections(windowWidth, windowHeight);
+							control->recomputeProjections(windowWidth, windowHeight, 70.0);
 
 							glViewport(0, 0, windowWidth, windowHeight);
 
@@ -665,7 +665,7 @@ int main(int argc, char** argv)
 						simplifiedModel.baseIndex,
 						simplifiedModel.indexCount,
 						lightPosition,
-						100.0f,
+						20.0f,
 						simplifiedVertices,
 						simplifiedIndices,
 						edgeLookup,

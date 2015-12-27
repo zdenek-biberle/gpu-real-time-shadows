@@ -58,7 +58,7 @@ void baseControl::recomputeProjections(float windowWidth, float windowHeight, fl
 	this->windowHeight = windowHeight;
 	this->windowWidth = windowWidth;
 
-	perspectiveMatrix = glm::perspective(90.0f, float(windowWidth) / float(windowHeight), 0.1f, 100.0f);
+	perspectiveMatrix = glm::perspective(glm::radians(fov), float(windowWidth) / float(windowHeight), 0.1f, 100.0f);
 	orthographicMatrix = glm::ortho((float) 0, windowWidth, (float) 0, windowHeight);
 
 }
