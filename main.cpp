@@ -41,7 +41,7 @@
 #include "fps_counter.h"
 #include "queryBuffer.h"
 
-int main(int argc, char** argv)
+int wrapped_main(int argc, char** argv)
 {
 	if (argc < 3)
 	{
@@ -63,6 +63,14 @@ int main(int argc, char** argv)
 		windowWidth, windowHeight,
 		SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
 
+	if (!window)
+	{
+		// nepodarilo se vytvorit okno
+		std::ostringstream stream;
+		stream << "SDL_CreateWindow error: " << SDL_GetError() << std::endl;
+		throw std::runtime_error(stream.str());
+	}
+		
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 5);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
@@ -1068,4 +1076,22 @@ int main(int argc, char** argv)
 	SDL_GL_DeleteContext(glCtx);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
+}
+
+int main(int argc, char** argv)
+{
+	try
+	{
+		return wrapped_main(argc, argv);
+	}
+	catch (std::exception& e)
+	{
+		std::cerr << "Unhandled exception: \n" << e.what() << std::endl;
+		throw;
+	}
+	catch (...)
+	{
+		std::cerr << "Unhandled unknown exception type" << std::endl;
+		throw;
+	}
 }
