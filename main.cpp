@@ -132,7 +132,6 @@ int wrapped_main(int argc, char** argv)
 
 	std::cout << "Creating buffers" << std::endl;
 
-	//GLuint shadowVolumeVerticesCount;
 	GLuint stencilTextureID;
 
 	//add programs to control..
@@ -163,9 +162,7 @@ int wrapped_main(int argc, char** argv)
 			exit(1);
 		}
 
-		//why? it isnt even used
-		GLuint sampl = glGetUniformLocation(fontProgram->id, "fontSampler");
-		GLuint trans = glGetUniformLocation(fontProgram->id, "objectTransform");
+		
 	}
 
 	{
@@ -494,7 +491,7 @@ int wrapped_main(int argc, char** argv)
 
 
 
-	std::cout << "Vstupujeme do hlavn�i smycky" << std::endl;
+	std::cout << "Vstupujeme do hlavni smycky" << std::endl;
 	
 	float modelRoty = 0.0f;
 	float roty = 0.0f;
@@ -586,7 +583,7 @@ int wrapped_main(int argc, char** argv)
 						case SDLK_c: 
 							CPU = !CPU; 
 							if (CPU) std::cout << "Nyni se pouziva CPU" << std::endl;
-							else std::cout << "Nyni� se pouzivacout GPU" << std::endl;
+							else std::cout << "Nyni� se pouziva GPU" << std::endl;
 							break;
 						case SDLK_F5: control->recompileAllPrograms(); break;
 
@@ -604,11 +601,7 @@ int wrapped_main(int argc, char** argv)
 			 }
 		}
 		
-		//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-		//glCullFace(GL_BACK);
-		//glFrontFace(GL_CCW);
-
+		
 		glQueryCounter(timestampQuery->query(), GL_TIMESTAMP);
 
 
@@ -630,9 +623,6 @@ int wrapped_main(int argc, char** argv)
 				auto totalSeconds = frameTickCounter * 0.001;
 				auto totalComputationSeconds = frameComputationTickCounter * 0.001;
 				
-				//std::cout << "Vykresleno " << totalFrames << " snímků za " << totalSeconds << " s (tj. " << totalFrames / totalSeconds << " FPS)" << std::endl;
-				//std::cout << "Průměrná doba vykreslování jendoho snímku: " << totalSeconds / totalFrames << " s" << std::endl;
-				//std::cout << "Průměrná doba výpočtu stínového tělesa: " << totalComputationSeconds / totalFrames << " s" << std::endl;
 				
 				lastDisplayedFrameCounter = frameCounter;
 				frameTickCounter = 0;
@@ -701,7 +691,6 @@ int wrapped_main(int argc, char** argv)
 					//glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(ShadowVolumeComputationInfo), &shadowVolumeInfo);
 					glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
-					//auto lightDirLocation = glGetUniformLocation(program->id, "lightDir");
 					auto lightPosLocation = glGetUniformLocation(program->id, "lightPos");
 
 					glUniform3fv(lightPosLocation, 1, glm::value_ptr(lightPosition));
@@ -819,19 +808,13 @@ int wrapped_main(int argc, char** argv)
 			}
 
 			
-			/*
-			glDepthMask(GL_FALSE);
-			glDepthFunc(GL_LESS);
-			glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);  //just in case
-			glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-			*/
+			
 			glEnable(GL_DEPTH_TEST);
 			glDepthMask(GL_FALSE);
 			glDepthFunc(GL_GEQUAL);
 
 
-			glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);  //just in case
-			//glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+			glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);  
 
 				glBindImageTexture(0, stencilTextureID, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32I);
 
@@ -892,7 +875,6 @@ int wrapped_main(int argc, char** argv)
 
 					GLuint colorLocation = glGetUniformLocation(program->id, "color");
 
-					//for (auto modelInfo : scene) {
 						mvMat = view * scene[0]->transform;
 						mvNormMat = glm::transpose(glm::inverse(glm::mat3(mvMat)));
 						glUniformMatrix4fv(mvLocation, 1, GL_FALSE, glm::value_ptr(mvMat));
@@ -900,8 +882,7 @@ int wrapped_main(int argc, char** argv)
 						glUniform3fv(colorLocation, 1, glm::value_ptr(scene[0]->color));
 
 						glDrawElements(GL_TRIANGLES, (GLsizei) scene[0]->indexCount, GL_UNSIGNED_INT, reinterpret_cast<void*>(scene[0]->baseIndex * sizeof(GLuint)));
-					//}
-
+					
 
 					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
@@ -947,7 +928,7 @@ int wrapped_main(int argc, char** argv)
 
 					colorLocation = glGetUniformLocation(program->id, "color");
 
-					//for (auto modelInfo : scene) {
+					
 					mvMat = view * scene[1]->transform;
 					mvNormMat = glm::transpose(glm::inverse(glm::mat3(mvMat)));
 					glUniformMatrix4fv(mvLocation, 1, GL_FALSE, glm::value_ptr(mvMat));
@@ -955,7 +936,7 @@ int wrapped_main(int argc, char** argv)
 					glUniform3fv(colorLocation, 1, glm::value_ptr(scene[1]->color));
 
 					glDrawElements(GL_TRIANGLES, (GLsizei) scene[1]->indexCount, GL_UNSIGNED_INT, reinterpret_cast<void*>(scene[1]->baseIndex * sizeof(GLuint)));
-					//}
+					
 
 
 					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
@@ -978,12 +959,10 @@ int wrapped_main(int argc, char** argv)
 					if (CPU){
 						glBindVertexArray(shadowVolumeVAO_CPU);
 
-						//glBindBuffer(GL_ARRAY_BUFFER, shadowVolumeBufferCpu); //bind output of cpu impl as array buffer
 					}
 					else{
 						glBindVertexArray(shadowVolumeVAO);
 
-						//glBindBuffer(GL_ARRAY_BUFFER, shadowVolumeBuffer); //bind output of compute shader as array buffer
 
 					}
 
@@ -1059,6 +1038,9 @@ int wrapped_main(int argc, char** argv)
 		}
 	}
 	
+	
+
+
 	glDeleteTextures(1, &stencilTextureID);
 
 	glDeleteBuffers(1, &vbo);
@@ -1073,9 +1055,14 @@ int wrapped_main(int argc, char** argv)
 	glDeleteVertexArrays(1, &stencilVAO_CPU);
 	glDeleteVertexArrays(1, &stencilVAO_GPU);
 
+
+
 	SDL_GL_DeleteContext(glCtx);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
+
+	std::cout << "Prumerny cas snimku: " << fps->getAvgRenderTime() << " ms => " << fps->getAvgFps() << " fps\nStisknete Enter pro ukonceni." << std::endl;
+	std::cin.ignore();
 }
 
 int main(int argc, char** argv)
