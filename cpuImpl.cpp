@@ -121,7 +121,7 @@ ShadowVolumeComputationInfo compute(
 
 				//duplikace jako backcap
 				emitTriangle(outVertices, a0 + glm::normalize(a0 - lightPos) * extrusionDistance, a1 + glm::normalize(a1 - lightPos) * extrusionDistance, a2 + glm::normalize(a2 - lightPos) * extrusionDistance, -1, 1);
-				triCount += 2;
+				triCount += 1;
 			}
 
 			unsigned edgeIndices[] = { aidx[0], aidx[1], aidx[1], aidx[2], aidx[2], aidx[0] };
