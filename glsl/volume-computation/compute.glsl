@@ -190,13 +190,12 @@ void main()
 		vec3 a1 = position(vert2a);
 		vec3 a2 = position(vert3a);
 		
-		//vec3 extrusionVec = extrusionDistance * normalize(lightDir);
 		
 		if (isFrontFacing(a0, a1, a2))
 		{
 			uint triIdx = reserveTriangles(1);	//returns triCount before adding the number.. effectively it's index of next free triangle "slot" in array
 			//emitTriangle(triIdx, a0, a1, a2, -2, 1);
-			emitTriangle(triIdx + 1, a0 + normalize(a0 - lightPos) * extrusionDistance, a2 + normalize(a2 - lightPos) * extrusionDistance, a1 + normalize(a1 - lightPos) * extrusionDistance, -1);	
+			emitTriangle(triIdx, a0 + normalize(a0 - lightPos) * extrusionDistance, a1 + normalize(a1 - lightPos) * extrusionDistance, a2 + normalize(a2 - lightPos) * extrusionDistance, -1);	
 		}
 		
 		uint edgeIndices[] = {aidx[0], aidx[1], aidx[1], aidx[2], aidx[2], aidx[0]};
