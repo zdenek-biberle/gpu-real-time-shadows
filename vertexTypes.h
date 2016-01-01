@@ -40,21 +40,21 @@ struct SimpleVertex
 	float _x;
 	float _y;
 	float _z;
-    //int padding;
+    float _pad;
 };
 
 struct ShadowVolumeVertex
 {
-	ShadowVolumeVertex(float x, float y, float z, int multiplicity, unsigned isCap);
-	ShadowVolumeVertex(const glm::vec3& point, int multiplicity, unsigned isCap);
+	ShadowVolumeVertex(float x, float y, float z, int multiplicity);
+	ShadowVolumeVertex(const glm::vec3& point, int multiplicity);
 	
 	float x;
 	float y;
 	float z;
 	float w;
 	int multiplicity;
-	int isCap;
-	//int padding[2];
+	
+	int pad[3];
 };
 
 //static_assert(sizeof(ShadowVolumeVertex) == sizeof(float) * 8, "Velikost struktury ShadowVolumeVertex neni 8 floatu");

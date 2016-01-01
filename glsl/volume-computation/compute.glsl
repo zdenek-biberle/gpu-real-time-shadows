@@ -12,16 +12,15 @@ struct InVertex
 	float x;
 	float y;
 	float z;
-	int padding;
+	float padding;
 };
 
 struct OutVertex
 {
 	vec4 position;
 	int multiplicity;
-	uint isCap;
-	uint padding0;
-	uint padding1;
+	int[3] padding;
+
 };
 
 struct EdgeLookupNode
@@ -77,20 +76,28 @@ uint reserveTriangles(uint n)
 	return atomicAdd(outTriCount, n);
 }
 
-void emitTriangle(uint idx, vec3 a, vec3 b, vec3 c, int multiplicity, uint isCap)
+void emitTriangle(uint idx, vec3 a, vec3 b, vec3 c, int multiplicity)
 {
-	idx *= 3;
+	idx *= 3;  //prevedeni indexu trojuhelniku na index vrcholu
 	
-	OutVertex outVertex;
-	outVertex.multiplicity = multiplicity;
-	outVertex.isCap = isCap;
+	OutVertex outVertex1;
+	OutVertex outVertex2;
+	OutVertex outVertex3;
+
+	outVertex1.multiplicity = multiplicity;
+	outVertex2.multiplicity = multiplicity;
+	outVertex3.multiplicity = multiplicity;
+
 	
-	outVertex.position = vec4(a, 1.0);
-	outVertices[idx] = outVertex;
-	outVertex.position = vec4(b, 1.0);
-	outVertices[idx + 1] = outVertex;
-	outVertex.position = vec4(c, 1.0);
-	outVertices[idx + 2] = outVertex;
+	
+	outVertex1.position = vec4(a, 1.0);
+	outVertices[idx] = outVertex1;
+
+	outVertex2.position = vec4(b, 1.0);
+	outVertices[idx + 1] = outVertex2;
+
+	outVertex3.position = vec4(c, 1.0);
+	outVertices[idx + 2] = outVertex3;
 }
 
 // zjisti, zda je bod point pred nebo za rovinou definovanou body a, b a c
@@ -140,6 +147,7 @@ uint doEdgeLookup(uint edge0, uint edge1)
 		midIdx = (loIdx + hiIdx) / 2;
 		node = edgeLookup[midIdx];
 		int comparison = edgeLookupNodeCompare(node, edge0, edge1);
+		
 		if (comparison == -1) loIdx = midIdx;
 		else if (comparison == 1) hiIdx = midIdx;
 		else break;
@@ -188,7 +196,7 @@ void main()
 		{
 			uint triIdx = reserveTriangles(1);	//returns triCount before adding the number.. effectively it's index of next free triangle "slot" in array
 			//emitTriangle(triIdx, a0, a1, a2, -2, 1);
-			emitTriangle(triIdx + 1, a0 + normalize(a0 - lightPos) * extrusionDistance, a2 + normalize(a2 - lightPos) * extrusionDistance, a1 + normalize(a1 - lightPos) * extrusionDistance, -2, 1);	
+			emitTriangle(triIdx + 1, a0 + normalize(a0 - lightPos) * extrusionDistance, a2 + normalize(a2 - lightPos) * extrusionDistance, a1 + normalize(a1 - lightPos) * extrusionDistance, -1);	
 		}
 		
 		uint edgeIndices[] = {aidx[0], aidx[1], aidx[1], aidx[2], aidx[2], aidx[0]};
@@ -245,8 +253,8 @@ void main()
 				vec3 edge1 = position(vert2c);
 				
 				uint triIdx = reserveTriangles(2);
-				emitTriangle(triIdx, edge0, edge1, edge0 + normalize(edge0 - lightPos) * extrusionDistance, edgeMultiplicity, 0);
-				emitTriangle(triIdx + 1, edge1, edge1 + normalize(edge1 - lightPos) * extrusionDistance, edge0 + normalize(edge0 - lightPos) * extrusionDistance, edgeMultiplicity, 0);
+				emitTriangle(triIdx, edge0, edge1, edge0 + normalize(edge0 - lightPos) * extrusionDistance, edgeMultiplicity);
+				emitTriangle(triIdx + 1, edge1, edge1 + normalize(edge1 - lightPos) * extrusionDistance, edge0 + normalize(edge0 - lightPos) * extrusionDistance, edgeMultiplicity);
 			}
 		}
 	}

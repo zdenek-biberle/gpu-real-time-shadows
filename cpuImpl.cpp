@@ -13,11 +13,11 @@ bool isFrontFacing(const glm::vec3& lightDir, const glm::vec3& a, const glm::vec
 	return glm::dot(glm::normalize(n), glm::normalize(lightDir)) < 0;
 }
 
-void emitTriangle(std::vector<ShadowVolumeVertex>& outVertices, const glm::vec3 a, const glm::vec3 b, const glm::vec3 c, int multiplicity, unsigned isCap)
+void emitTriangle(std::vector<ShadowVolumeVertex>& outVertices, const glm::vec3 a, const glm::vec3 b, const glm::vec3 c, int multiplicity)
 {
-	outVertices.push_back(ShadowVolumeVertex(a.x, a.y, a.z, multiplicity, isCap));
-	outVertices.push_back(ShadowVolumeVertex(b.x, b.y, b.z, multiplicity, isCap));
-	outVertices.push_back(ShadowVolumeVertex(c.x, c.y, c.z, multiplicity, isCap));
+	outVertices.push_back(ShadowVolumeVertex(a.x, a.y, a.z, multiplicity));
+	outVertices.push_back(ShadowVolumeVertex(b.x, b.y, b.z, multiplicity));
+	outVertices.push_back(ShadowVolumeVertex(c.x, c.y, c.z, multiplicity));
 }
 
 // zjisti, zda je bod point pred nebo za rovinou definovanou body a, b a c
@@ -120,7 +120,7 @@ ShadowVolumeComputationInfo compute(
 				//emitTriangle(outVertices, a0, a1, a2, -2, 1);		//algoritmus o front capech nemluvi
 
 				//duplikace jako backcap
-				emitTriangle(outVertices, a0 + glm::normalize(a0 - lightPos) * extrusionDistance, a1 + glm::normalize(a1 - lightPos) * extrusionDistance, a2 + glm::normalize(a2 - lightPos) * extrusionDistance, -1, 1);
+				emitTriangle(outVertices, a0 + glm::normalize(a0 - lightPos) * extrusionDistance, a1 + glm::normalize(a1 - lightPos) * extrusionDistance, a2 + glm::normalize(a2 - lightPos) * extrusionDistance, -1);
 				triCount += 1;
 			}
 
@@ -160,8 +160,8 @@ ShadowVolumeComputationInfo compute(
 					glm::vec3 edge1 = position(inVertices[edgeIndices[edgeIdx * 2 + 1]]);
 
 					//vytahnuti stran
-					emitTriangle(outVertices, edge0, edge1, edge0 + glm::normalize(edge0 - lightPos) * extrusionDistance, edgeMultiplicity, 0);
-					emitTriangle(outVertices, edge1, edge1 + glm::normalize(edge1 - lightPos) * extrusionDistance, edge0 + glm::normalize(edge0 - lightPos) * extrusionDistance, edgeMultiplicity, 0);
+					emitTriangle(outVertices, edge0, edge1, edge0 + glm::normalize(edge0 - lightPos) * extrusionDistance, edgeMultiplicity);
+					emitTriangle(outVertices, edge1, edge1 + glm::normalize(edge1 - lightPos) * extrusionDistance, edge0 + glm::normalize(edge0 - lightPos) * extrusionDistance, edgeMultiplicity);
 					triCount += 2;
 				}
 			}

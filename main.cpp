@@ -727,8 +727,8 @@ int wrapped_main(int argc, char** argv)
 					for (unsigned i = 0; i < 5; i++)
 						glBindBufferBase(GL_SHADER_STORAGE_BUFFER, i, 0);
 
-					glBindBuffer(GL_SHADER_STORAGE_BUFFER, shadowVolumeComputationInfo);		//hadam ze pro ctverec by to melo byt 12 a ne 6... cool po "opravach" compute shaderu vraci ted 8
-					glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(ShadowVolumeComputationInfo), &shadowVolumeInfo);	//precteni nove hodnoty
+					glBindBuffer(GL_SHADER_STORAGE_BUFFER, shadowVolumeComputationInfo);	
+					glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(ShadowVolumeComputationInfo), &shadowVolumeInfo);	//precteni nove hodnoty - spravnych 10 - 2 backcap a 8 side caps
 					glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
 					glUseProgram(0);

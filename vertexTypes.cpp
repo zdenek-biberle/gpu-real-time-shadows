@@ -35,32 +35,42 @@ Vertex::Vertex(
 
 }
 
-SimpleVertex::SimpleVertex(float x, float y, float z):
-	_x(x),
-	_y(y),
-	_z(z)
+SimpleVertex::SimpleVertex(float x, float y, float z) :
+_x(x),
+_y(y),
+_z(z),
+_pad(0)
 {}
 
 SimpleVertex::SimpleVertex(glm::vec3 position):
 	_x(position.x),
 	_y(position.y),
-	_z(position.z)
+	_z(position.z),
+	_pad(0)
 {}
 
-ShadowVolumeVertex::ShadowVolumeVertex(float x, float y, float z, int multiplicity, unsigned isCap):
-	x(x),
-	y(y),
-	z(z),
-	w(1.0f),
-	multiplicity(multiplicity),
-	isCap(isCap)
-{}
+ShadowVolumeVertex::ShadowVolumeVertex(float x, float y, float z, int multiplicity) :
+x(x),
+y(y),
+z(z),
+w(1.0f),
+multiplicity(multiplicity)
 
-ShadowVolumeVertex::ShadowVolumeVertex(const glm::vec3& point, int multiplicity, unsigned isCap):
+{
+	pad[0] = 0;
+	pad[1] = 0;
+	pad[2] = 0;
+}
+
+ShadowVolumeVertex::ShadowVolumeVertex(const glm::vec3& point, int multiplicity):
 	x(point.x),
 	y(point.y),
 	z(point.z),
 	w(1.0f),
-	multiplicity(multiplicity),
-	isCap(isCap)
-{}
+	multiplicity(multiplicity)
+	
+{
+	pad[0] = 0;
+	pad[1] = 0;
+	pad[2] = 0;
+}
