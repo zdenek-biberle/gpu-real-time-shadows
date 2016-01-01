@@ -117,10 +117,10 @@ ShadowVolumeComputationInfo compute(
 			//je to privracena cast modelu - frontcap
 			if (isFrontFacing(lightDir, a0, a1, a2))
 			{
-				emitTriangle(outVertices, a0, a1, a2, -2, 1);		
+				//emitTriangle(outVertices, a0, a1, a2, -2, 1);		//algoritmus o front capech nemluvi
 
 				//duplikace jako backcap
-				emitTriangle(outVertices, a0 + glm::normalize(a0 - lightPos) * extrusionDistance, a1 + glm::normalize(a1 - lightPos) * extrusionDistance, a2 + glm::normalize(a2 - lightPos) * extrusionDistance, -2, 1);
+				emitTriangle(outVertices, a0 + glm::normalize(a0 - lightPos) * extrusionDistance, a1 + glm::normalize(a1 - lightPos) * extrusionDistance, a2 + glm::normalize(a2 - lightPos) * extrusionDistance, -1, 1);
 				triCount += 2;
 			}
 

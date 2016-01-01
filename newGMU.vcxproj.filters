@@ -175,6 +175,12 @@
     <None Include="glsl\font\FontVS.vert">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="glsl\scene\caster.frag">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="glsl\scene\caster.vert">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Font Include="Fonts\EleganTech-.ttf" />
