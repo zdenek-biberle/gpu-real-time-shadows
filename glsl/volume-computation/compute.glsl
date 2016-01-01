@@ -4,7 +4,6 @@ layout (local_size_x = 128) in;
 
 uniform uint indexCount;
 uniform uint indexOffset;
-//uniform vec3 lightDir = vec3(-1.0, -1.0, -1.0);
 uniform float extrusionDistance = 100.0;
 uniform vec3 lightPos;
 
@@ -187,8 +186,8 @@ void main()
 		
 		if (isFrontFacing(a0, a1, a2))
 		{
-			uint triIdx = reserveTriangles(2);	//returns triCount before adding the number.. effectively it's index of next free triangle "slot" in array
-			emitTriangle(triIdx, a0, a1, a2, -2, 1);
+			uint triIdx = reserveTriangles(1);	//returns triCount before adding the number.. effectively it's index of next free triangle "slot" in array
+			//emitTriangle(triIdx, a0, a1, a2, -2, 1);
 			emitTriangle(triIdx + 1, a0 + normalize(a0 - lightPos) * extrusionDistance, a2 + normalize(a2 - lightPos) * extrusionDistance, a1 + normalize(a1 - lightPos) * extrusionDistance, -2, 1);	
 		}
 		

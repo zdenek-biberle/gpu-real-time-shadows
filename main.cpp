@@ -50,7 +50,7 @@ int wrapped_main(int argc, char** argv)
 
 	auto environmentModelFilename = std::string(argv[1]);
 	auto shadowModelFilename = std::string(argv[2]);
-	vec3 lightPosition = vec3(4.0, 4.0, 4.0);
+	vec3 lightPosition = vec3(4.0, 4.0, 2.0);
 	SDL_Init(SDL_INIT_VIDEO);
 
 	int windowWidth = 1024;
@@ -673,7 +673,7 @@ int wrapped_main(int argc, char** argv)
 						simplifiedModel.baseIndex,
 						simplifiedModel.indexCount,
 						lightPosition,
-						20.0f,
+						80.0f,
 						simplifiedVertices,
 						simplifiedIndices,
 						edgeLookup,
