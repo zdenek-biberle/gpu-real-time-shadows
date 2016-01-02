@@ -41,6 +41,12 @@
 #include "fps_counter.h"
 #include "queryBuffer.h"
 
+// volume computation method
+enum class Method
+{
+	cpu, gpuCompute, gpuGeometry
+};
+
 int wrapped_main(int argc, char** argv)
 {
 	if (argc < 3)
@@ -113,13 +119,13 @@ int wrapped_main(int argc, char** argv)
 
 	environmentModel.color = vec3(0.8, 0.2, 0.1);
 	shadowModel.color = vec3(0.2, 0.8, 0.1);
-	std::cout << "Zjednodusujeme stinici� model" << std::endl;
+	std::cout << "Zjednodusujeme stinici model" << std::endl;
 	
 	std::vector<SimpleVertex> simplifiedVertices;
 	std::vector<GLuint> simplifiedIndices;
 	auto simplifiedModel = simplifyModel(shadowModel, vertices, indices, simplifiedVertices, simplifiedIndices);
 	
-	std::cout << "Generujeme buffer pro vyhledavani� hran" << std::endl;
+	std::cout << "Generujeme buffer pro vyhledavani hran" << std::endl;
 	
 	std::vector<EdgeLookupNode> edgeLookup;
 	generateEdgeLookup(simplifiedModel, simplifiedIndices, edgeLookup);
@@ -144,14 +150,12 @@ int wrapped_main(int argc, char** argv)
 	control->addProgram("stencil");
 	control->addProgram("lighting");
 	control->addProgram("volumeComputation");
+	control->addProgram("volumeComputationGeometry");
 	control->addProgram("volumeVisualization");
 	control->addProgram("font");
 	control->addProgram("caster");
 
-	
-
 	{
-
 		ShaderProgram *fontProgram = control->getProgram("font");
 
 		fontProgram->addShader(GL_VERTEX_SHADER, "./glsl/font/FontVS.vert");
@@ -161,12 +165,9 @@ int wrapped_main(int argc, char** argv)
 			std::cin.ignore();
 			exit(1);
 		}
-
-		
 	}
 
 	{
-
 		ShaderProgram *simpleProgram = control->getProgram("simple");
 
 		simpleProgram->addShader(GL_VERTEX_SHADER, "./glsl/scene/simple.vert");
@@ -179,7 +180,6 @@ int wrapped_main(int argc, char** argv)
 	}
 
 	{
-
 		ShaderProgram *stencilProgram = control->getProgram("stencil");
 
 		stencilProgram->addShader(GL_VERTEX_SHADER, "./glsl/scene/stencil.vert");
@@ -192,7 +192,6 @@ int wrapped_main(int argc, char** argv)
 	}
 
 	{
-
 		ShaderProgram *lightingProgram = control->getProgram("lighting");
 
 		lightingProgram->addShader(GL_VERTEX_SHADER, "./glsl/scene/vert.glsl");
@@ -205,7 +204,6 @@ int wrapped_main(int argc, char** argv)
 	}
 	
 	{
-
 		ShaderProgram *casterProgram = control->getProgram("caster");
 
 		casterProgram->addShader(GL_VERTEX_SHADER, "./glsl/scene/caster.vert");
@@ -218,7 +216,6 @@ int wrapped_main(int argc, char** argv)
 	}
 
 	{
-
 		ShaderProgram *volumeComputationProgram = control->getProgram("volumeComputation");
 
 		volumeComputationProgram->addShader(GL_COMPUTE_SHADER, "./glsl/volume-computation/compute.glsl");
@@ -229,15 +226,29 @@ int wrapped_main(int argc, char** argv)
 		}
 	}
 
+	{
+		ShaderProgram *volumeVisualizationProgram = control->getProgram("volumeVisualization");
 
-	ShaderProgram *volumeVisualizationProgram = control->getProgram("volumeVisualization");
+		volumeVisualizationProgram->addShader(GL_VERTEX_SHADER, "./glsl/volume-visualization/vert.glsl");
+		volumeVisualizationProgram->addShader(GL_FRAGMENT_SHADER, "./glsl/volume-visualization/frag.glsl");
 
-	volumeVisualizationProgram->addShader(GL_VERTEX_SHADER, "./glsl/volume-visualization/vert.glsl");
-	volumeVisualizationProgram->addShader(GL_FRAGMENT_SHADER, "./glsl/volume-visualization/frag.glsl");
-
-	if (!volumeVisualizationProgram->linkProgram()) {
-		std::cin.ignore();
-		exit(1);
+		if (!volumeVisualizationProgram->linkProgram()) {
+			std::cin.ignore();
+			exit(1);
+		}
+	}
+	
+	{
+		auto volumeComputationGeometryProgram = control->getProgram("volumeComputationGeometry");
+		
+		volumeComputationGeometryProgram->addShader(GL_VERTEX_SHADER, "./glsl/volume-computation-geometry/vert.glsl");
+		volumeComputationGeometryProgram->addShader(GL_GEOMETRY_SHADER, "./glsl/volume-computation-geometry/geometry.glsl");
+		volumeComputationGeometryProgram->addShader(GL_FRAGMENT_SHADER, "./glsl/volume-computation-geometry/frag.glsl");
+		
+		if (!volumeComputationGeometryProgram->linkProgram()) {
+			std::cin.ignore();
+			exit(1);
+		}
 	}
 
 	//create font sampler
@@ -259,9 +270,6 @@ int wrapped_main(int argc, char** argv)
 	//essentials should be part of constructor
 	control->font = std::make_unique<Font>();
 	control->font->addProgram(control->getProgram("font")->id);
-
-	
-
 
 	GLuint globalMatricesBindingIndex = 0;
 
@@ -315,15 +323,43 @@ int wrapped_main(int argc, char** argv)
 		
 	glBindBuffer(GL_ARRAY_BUFFER, vbo);
 	glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_STATIC_DRAW);
-
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), indices.data(), GL_STATIC_DRAW);
-
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	
 	glBindBuffer(GL_SHADER_STORAGE_BUFFER, shadowVolumeBuffer);
 	// *8, protože pro každý trojúhelník můžeme potenciálně vygenerovat až 7 dalších trojúhelníků + puvodni
 	glBufferData(GL_SHADER_STORAGE_BUFFER, shadowModel.indexCount * sizeof(ShadowVolumeVertex) * 8, nullptr, GL_DYNAMIC_COPY);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
+	
+	std::cout << "Generujeme pomocne buffery pro vypocet shadow volume" << std::endl;
+	
+	GLuint simpleVbo;
+	GLuint simpleIbo;
+	
+	GLuint edgeLookupBuffer;
 
+	glGenBuffers(1, &simpleVbo);
+	glBindBuffer(GL_ARRAY_BUFFER, simpleVbo);
+	glBufferData(GL_ARRAY_BUFFER, simplifiedVertices.size() * sizeof(SimpleVertex), simplifiedVertices.data(), GL_STATIC_DRAW);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	
+	glGenBuffers(1, &simpleIbo);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, simpleIbo);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, simplifiedIndices.size() * sizeof(GLuint), simplifiedIndices.data(), GL_STATIC_DRAW);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+	
+	glGenBuffers(1, &edgeLookupBuffer);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, edgeLookupBuffer);
+	glBufferData(GL_SHADER_STORAGE_BUFFER, edgeLookup.size() * sizeof(EdgeLookupNode), edgeLookup.data(), GL_STATIC_DRAW);
+	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
+	
+	
+	std::cout << "Generujeme VAO" << std::endl;
+	
 	//set up vao for shadow volume display - from gpu
 	GLuint shadowVolumeVAO;
 	glGenVertexArrays(1, &shadowVolumeVAO);
@@ -387,8 +423,6 @@ int wrapped_main(int argc, char** argv)
 			// normala
 			glVertexAttribPointer(1u, 3, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, _nx)));
 
-
-
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
@@ -410,8 +444,6 @@ int wrapped_main(int argc, char** argv)
 
 		// pozice
 		glVertexAttribPointer(0u, 3, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(Vertex), reinterpret_cast<void*>(offsetof(Vertex, _x)));
-
-
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
@@ -464,33 +496,25 @@ int wrapped_main(int argc, char** argv)
 
 	glBindVertexArray(0);
 
-
-	std::cout << "Generujeme pomocne buffery pro vypoc�et shadow volume" << std::endl;
+	// setup VAO for rendering the shadow volume via geometry shaders
+	GLuint stencilVAO_GPU_geometry;
+	glGenVertexArrays(1, &stencilVAO_GPU_geometry);
+	glBindVertexArray(stencilVAO_GPU_geometry);
 	
-	GLuint simpleVbo;
-	GLuint simpleIbo;
+		glBindBuffer(GL_ARRAY_BUFFER, simpleVbo);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, simpleIbo);
+
+		glEnableVertexAttribArray(0);
+
+		// pozice
+		glVertexAttribPointer(0u, 3, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(SimpleVertex), reinterpret_cast<void*>(offsetof(SimpleVertex, _x)));
+
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	
-	GLuint edgeLookupBuffer;
-
-
-	glGenBuffers(1, &simpleVbo);
-	glBindBuffer(GL_ARRAY_BUFFER, simpleVbo);
-	glBufferData(GL_ARRAY_BUFFER, simplifiedVertices.size() * sizeof(SimpleVertex), simplifiedVertices.data(), GL_STATIC_DRAW);
+	glBindVertexArray(0);
 	
-	glGenBuffers(1, &simpleIbo);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, simpleIbo);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, simplifiedIndices.size() * sizeof(GLuint), simplifiedIndices.data(), GL_STATIC_DRAW);
-
-	glGenBuffers(1, &edgeLookupBuffer);
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, edgeLookupBuffer);
-	glBufferData(GL_SHADER_STORAGE_BUFFER, edgeLookup.size() * sizeof(EdgeLookupNode), edgeLookup.data(), GL_STATIC_DRAW);
-
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-	glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
-
-
-
+	
 	std::cout << "Vstupujeme do hlavni smycky" << std::endl;
 	
 	float modelRoty = 0.0f;
@@ -499,10 +523,9 @@ int wrapped_main(int argc, char** argv)
 	float dist = -4.0f;
 	
 	bool rotate = true;
-	bool loadShaders = true;
 	
 	bool drawShadowVolume = false;
-	bool CPU = false;
+	Method method = Method::gpuCompute;
 	
 	auto ticks = SDL_GetTicks();
 	auto ticksDelta = 0;
@@ -511,7 +534,6 @@ int wrapped_main(int argc, char** argv)
 	unsigned lastDisplayedFrameCounter = 0;
 	unsigned frameTickCounter = 0;
 	unsigned frameComputationTickCounter = 0;
-	
 	
 	ShadowVolumeComputationInfo shadowVolumeInfo;
 	
@@ -532,7 +554,6 @@ int wrapped_main(int argc, char** argv)
 					switch (event.window.event)
 					{
 						case SDL_WINDOWEVENT_RESIZED:
-
 							windowWidth = event.window.data1;
 							windowHeight = event.window.data2;
 
@@ -580,19 +601,27 @@ int wrapped_main(int argc, char** argv)
 					{
 						case SDLK_r: rotate = !rotate; break;
 						case SDLK_t: drawShadowVolume = !drawShadowVolume; break;
+						
 						case SDLK_c: 
-							CPU = !CPU; 
-							if (CPU) std::cout << "Nyni se pouziva CPU" << std::endl;
-							else std::cout << "Nyni� se pouziva GPU" << std::endl;
+							method = Method::cpu;
+							std::cout << "Nyni se pouziva CPU" << std::endl;
 							break;
+							
+						case SDLK_v:
+							method = Method::gpuCompute;
+							std::cout << "Nyni se pouziva GPU a compute shadery" << std::endl;
+							break;
+							
+						case SDLK_b:
+							method = Method::gpuGeometry;
+							std::cout << "Nyni se pouziva GPU a geometry shadery" << std::endl;
+							break;
+							
 						case SDLK_F5: control->recompileAllPrograms(); break;
 
 						case SDLK_i: control->stats = !control->stats; break;
 
 						case SDLK_ESCAPE: run = false;
-
-
-												
 					}
 					break;
 				
@@ -601,11 +630,8 @@ int wrapped_main(int argc, char** argv)
 			 }
 		}
 		
-		
 		glQueryCounter(timestampQuery->query(), GL_TIMESTAMP);
 
-
-		
 		// Cas a pocitadla snimku a podobne veci //
 		{
 			auto lastTicks = ticks;
@@ -623,7 +649,6 @@ int wrapped_main(int argc, char** argv)
 				auto totalSeconds = frameTickCounter * 0.001;
 				auto totalComputationSeconds = frameComputationTickCounter * 0.001;
 				
-				
 				lastDisplayedFrameCounter = frameCounter;
 				frameTickCounter = 0;
 				frameComputationTickCounter = 0;
@@ -632,8 +657,6 @@ int wrapped_main(int argc, char** argv)
 		
 		try
 		{
-
-			
 			auto translate = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, dist));
 			auto rotate =	 glm::rotate(translate, rotx, glm::vec3(1.0f, 0.0f, 0.0f));
 			auto view =		 glm::rotate(rotate, roty, glm::vec3(0.0f, 1.0f, 0.0f));
@@ -652,9 +675,8 @@ int wrapped_main(int argc, char** argv)
 
 			{
 				unsigned computationStartTicks = SDL_GetTicks();
-				glm::vec3 lightDir = glm::mat3(glm::inverse(shadowModel.transform)) * -glm::normalize(lightPosition);
 
-				if (CPU)
+				if (method == Method::cpu)
 				{
 					std::vector<ShadowVolumeVertex> shadowVolumeVertices;
 					shadowVolumeVertices.reserve(simplifiedModel.indexCount * 7);
@@ -678,7 +700,7 @@ int wrapped_main(int argc, char** argv)
 					
 				
 				}
-				else if (control->getProgram("volumeComputation")->id != 0)
+				else if (method == Method::gpuCompute && control->getProgram("volumeComputation")->id != 0)
 				{
 					ShaderProgram *program = control->getProgram("volumeComputation");
 
@@ -707,11 +729,8 @@ int wrapped_main(int argc, char** argv)
 					auto indexCountLocation = glGetUniformLocation(program->id, "indexCount");
 					glUniform1ui(indexCountLocation, simplifiedModel.indexCount);
 
-					
-						glDispatchCompute((shadowModel.indexCount / 3 + 127) / 128, 1, 1);
-						glMemoryBarrier(GL_ALL_BARRIER_BITS);
-						
-					
+					glDispatchCompute((shadowModel.indexCount / 3 + 127) / 128, 1, 1);
+					glMemoryBarrier(GL_ALL_BARRIER_BITS);
 
 					for (unsigned i = 0; i < 5; i++)
 						glBindBufferBase(GL_SHADER_STORAGE_BUFFER, i, 0);
@@ -721,8 +740,6 @@ int wrapped_main(int argc, char** argv)
 					glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
 					glUseProgram(0);
-
-					
 				}
 
 				frameComputationTickCounter += SDL_GetTicks() - computationStartTicks;
@@ -734,7 +751,6 @@ int wrapped_main(int argc, char** argv)
 			Vykreslovaci cast. Uvedeni do vychoziho stavu.
 			*/
 
-
 			glDisable(GL_CULL_FACE);
 			glDisable(GL_BLEND);
 			glEnable(GL_DEPTH_TEST);
@@ -743,7 +759,6 @@ int wrapped_main(int argc, char** argv)
 			glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
 
 			//this bit should clear stencil texture between runs
 			//GLint clearColor[] = { 0 };
@@ -761,19 +776,15 @@ int wrapped_main(int argc, char** argv)
 
 			program->useProgram();
 			
-
 			glBindVertexArray(depthVAO);
 
 			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);	//
-
 			
 			//nepotrebujeme zaznamenavat barvu
 			glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 
 			auto mvLocation = glGetUniformLocation(program->id, "mvMat");
 			auto pLocation = glGetUniformLocation(program->id, "pMat");
-
-
 
 			//for (auto modelInfo : scene) {
 				auto mvMat = view * scene[0]->transform;
@@ -792,50 +803,64 @@ int wrapped_main(int argc, char** argv)
 
 			///////////////////////////////////////////////////////////////////////////////////////////////////////
 			/*
-			Vykresleni vypocitaneho shadow volume v compute casti a ulozeni multiplicity pro kazdu zasazeny pixel.
-			*/
-			program = control->getProgram("stencil");
+			 * Vykresleni vypocitaneho shadow volume v compute casti a ulozeni multiplicity pro kazdu zasazeny pixel.
+			 * Zavisle na metode.
+			 */
+			switch (method)
+			{
+				case Method::cpu:
+				case Method::gpuCompute:
+				{
+					program = control->getProgram("stencil");
 
-			program->useProgram();
-			
+					program->useProgram();
 
-			if (CPU){
-				glBindVertexArray(stencilVAO_CPU);
+					if (method == Method::cpu){
+						glBindVertexArray(stencilVAO_CPU);
 
-			} else {
-				glBindVertexArray(stencilVAO_GPU);
+					} else {
+						glBindVertexArray(stencilVAO_GPU);
+						
+					}
+
+					
+					
+					glEnable(GL_DEPTH_TEST);
+					glDepthMask(GL_FALSE);
+					glDepthFunc(GL_GEQUAL);
+
+
+					glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);  
+
+						glBindImageTexture(0, stencilTextureID, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32I);
+
+						mvLocation = glGetUniformLocation(program->id, "mvMat");
+						pLocation = glGetUniformLocation(program->id, "pMat");
+
+						glUniformMatrix4fv(mvLocation, 1, GL_FALSE, glm::value_ptr(view * shadowModel.transform));
+						glUniformMatrix4fv(pLocation, 1, GL_FALSE, glm::value_ptr(pMat));
+
+					
+							glDrawArrays(GL_TRIANGLES, 0, shadowVolumeInfo.triCount * 3);
+
+
+						glBindVertexArray(0);
+
+					glUseProgram(0);
+					break;
+				}
 				
+				case Method::gpuGeometry:
+				{
+					
+					break;
+				}
 			}
-
-			
-			
-			glEnable(GL_DEPTH_TEST);
-			glDepthMask(GL_FALSE);
-			glDepthFunc(GL_GEQUAL);
-
-
-			glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);  
-
-				glBindImageTexture(0, stencilTextureID, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32I);
-
-				mvLocation = glGetUniformLocation(program->id, "mvMat");
-				pLocation = glGetUniformLocation(program->id, "pMat");
-
-				glUniformMatrix4fv(mvLocation, 1, GL_FALSE, glm::value_ptr(view * shadowModel.transform));
-				glUniformMatrix4fv(pLocation, 1, GL_FALSE, glm::value_ptr(pMat));
-
-			
-					glDrawArrays(GL_TRIANGLES, 0, shadowVolumeInfo.triCount * 3);
-
-
-				glBindVertexArray(0);
-
-			glUseProgram(0);
 
 			///////////////////////////////////////////////////////////////////////////////////////////////////////
 			/*
-			Vykresleni sceny se vsim vsudy. Vyuziva pro vykresleni stinu informace ze "stencil" textury.
-			*/
+			 *Vykresleni sceny se vsim vsudy. Vyuziva pro vykresleni stinu informace ze "stencil" textury.
+			 */
 			
 			program = control->getProgram("lighting");
 
@@ -946,50 +971,40 @@ int wrapped_main(int argc, char** argv)
 			glUseProgram(0);
 			///////////////////////////////////////////////////////////////////////////////////////////////////////
 			/*
-			Vizualizace shadow volume.
-			*/
+			 * Vizualizace shadow volume.
+			 */
 
-			if (control->getProgram("volumeVisualization")->id != 0 && drawShadowVolume)
+			if (control->getProgram("volumeVisualization")->id != 0 && drawShadowVolume && method == Method::cpu && method == Method::gpuCompute)
 			{
-				
 				ShaderProgram *program = control->getProgram("volumeVisualization");
 
 				program->useProgram();
 
-					if (CPU){
-						glBindVertexArray(shadowVolumeVAO_CPU);
-
-					}
-					else{
-						glBindVertexArray(shadowVolumeVAO);
-
-
-					}
-
+				if (method == Method::cpu){
+					glBindVertexArray(shadowVolumeVAO_CPU);
+				}
+				else{
+					glBindVertexArray(shadowVolumeVAO);
+				}
 				
+					glEnable(GL_BLEND);
+					glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+					glDepthMask(GL_FALSE);
+					
+					auto mvLocation = glGetUniformLocation(program->id, "mvMat");
+					auto mvNormLocation = glGetUniformLocation(program->id, "mvNormMat");
+					auto pLocation = glGetUniformLocation(program->id, "pMat");
+					
+					auto mvMat = view * shadowModel.transform;
+					auto mvNormMat = glm::transpose(glm::inverse(glm::mat3(mvMat)));
+					
+					glUniformMatrix4fv(mvLocation, 1, GL_FALSE, glm::value_ptr(mvMat));
+					glUniformMatrix3fv(mvNormLocation, 1, GL_FALSE, glm::value_ptr(mvNormMat));
+					glUniformMatrix4fv(pLocation, 1, GL_FALSE, glm::value_ptr(pMat));
+					
+					glDrawArrays(GL_TRIANGLES, 0, shadowVolumeInfo.triCount * 3);
 
-
-						glEnable(GL_BLEND);
-						glBlendFunc(GL_SRC_ALPHA, GL_ONE);
-						glDepthMask(GL_FALSE);
-			
-						auto mvLocation = glGetUniformLocation(program->id, "mvMat");
-						auto mvNormLocation = glGetUniformLocation(program->id, "mvNormMat");
-						auto pLocation = glGetUniformLocation(program->id, "pMat");
-				
-						auto mvMat = view * shadowModel.transform;
-						auto mvNormMat = glm::transpose(glm::inverse(glm::mat3(mvMat)));
-				
-						glUniformMatrix4fv(mvLocation, 1, GL_FALSE, glm::value_ptr(mvMat));
-						glUniformMatrix3fv(mvNormLocation, 1, GL_FALSE, glm::value_ptr(mvNormMat));
-						glUniformMatrix4fv(pLocation, 1, GL_FALSE, glm::value_ptr(pMat));
-				
-
-							glDrawArrays(GL_TRIANGLES, 0, shadowVolumeInfo.triCount * 3);
-							
-
-					glBindVertexArray(0);
-				
+				glBindVertexArray(0);
 				glUseProgram(0);
 				
 				glDepthMask(GL_TRUE);
@@ -998,8 +1013,8 @@ int wrapped_main(int argc, char** argv)
 			
 			///////////////////////////////////////////////////////////////////////////////////////////////////////
 			/*
-			Na zaver vykresleni statistik behu.
-			*/
+			 * Na zaver vykresleni statistik behu.
+			 */
 
 			control->getProgram("font")->useProgram();
 
@@ -1037,9 +1052,6 @@ int wrapped_main(int argc, char** argv)
 			std::cerr << ex.what() << std::endl;
 		}
 	}
-	
-	
-
 
 	glDeleteTextures(1, &stencilTextureID);
 
@@ -1054,8 +1066,6 @@ int wrapped_main(int argc, char** argv)
 	glDeleteVertexArrays(1, &sceneVAO);
 	glDeleteVertexArrays(1, &stencilVAO_CPU);
 	glDeleteVertexArrays(1, &stencilVAO_GPU);
-
-
 
 	SDL_GL_DeleteContext(glCtx);
 	SDL_DestroyWindow(window);

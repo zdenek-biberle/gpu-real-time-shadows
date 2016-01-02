@@ -20,12 +20,19 @@ public:
 	//default value equals 300ms
 	//all times and interval are in nanoseconds
 	fps_counter(unsigned int text_size = 10, GLuint update_interval = 300000000) :
-		current_time(0), last_update_time(0), last_frame_time(0), frame(0), fps(0), render_time_avg(0), update_interval(update_interval),
-		avg_fps(0), avg_render_time(0), update_count(0), frames_count(0) {
-	
+		current_time(0), 
+		last_update_time(0), 
+		last_frame_time(0), 
+		update_interval(update_interval), 
+		frame(0), 
+		fps(0), 
+		render_time_avg(0),
+		frames_count(0),
+		update_count(0),
+		avg_fps(0), 
+		avg_render_time(0) {
 			control = Control::getInstance();
 			stats = std::make_unique<dynamicText> (control->font.get());
-
 
 			frame_time_slots.resize(8);
 			frame_time_slots[0].slot_name = "240fps - smaller than 4.16ms - ";
@@ -37,13 +44,11 @@ public:
 			frame_time_slots[6].slot_name = "10fps  - smaller than 100ms  - ";
 			frame_time_slots[7].slot_name = "lower  - greater than 100ms  - ";
 
-
 			this->text_size = text_size;
 	}
 
 
 	GLuint64 current_time;	//to be updated by query	
-
 
 	void update();
 	float getAvgRenderTime();
