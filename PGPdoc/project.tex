@@ -98,6 +98,19 @@ Pokud je vısledná multiplicita nenulová, vytvo?í se z p?íslušné hrany st?na obje
 
 
 
+Postup kreslení za?íná vykreslením stín?nıch povrch? do hloubkového bufferu, kterı je pouitı p?i 
+z-fail generování "stencil" textury stín?. P?i z-fail algoritmu je zápis do hloubkového bufferu vypnutı
+a pro kadı fragment, kterı má hloubku v?tší ne je aktuáln? v hloubkovém bufferu atomicky zapíše negativní
+hodnotu své multiplicity (pro fragmenty orientované od kamery je tato hodnota ve vısledku kladná a pro
+fragmenty orientované ke kame?e záporná), do celo?íselné "stencil" textury. Je také zapnutı early fragment test,
+jinak by atomické operace prob?hly i pro fragmenty, které se budou zahazovat.
+
+Se získanou texturou se stínem u sta?í vykreslit znova stín?né p?edm?ty a pak stínící p?edm?ty bez ní.
+
+Zajímavé ?ešené problémy:
+Pro atomické load/store operace jsou podporovány pouze celo?íselné formáty textur r32i a r32ui.
+AMD má opravdu problém s p?ímım vyuitím hodnot ze SSBO pole, ale zkopírování do pomocné prom?nné tento problém obejde.
+Padding vstupních dat je opravdu pot?eba. Dlouho nás ani nenapadlo tam hledat chybu a v?bec se tím zabıvat. 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -123,6 +136,10 @@ I p?es problémy s AMD hardwarem se nakonec poda?ilo implementaci v compute shade
 Problémy byly v paddingu vstupních struktur i samotné implementaci algoritmu, kde se po?ítaly
 n?které trojuhelníky navíc. 
 
+----Nejaka tabulka
+
+----Nejaky screenshot..
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{ZÃ¡vÄ›r}
@@ -130,6 +147,7 @@ n?které trojuhelníky navíc.
 Tady by mÄ›lo bÃ½t struÄnÄ› napsanÃ© jak to funguje.
 
 --znova psat jak to funguje?? 
+Funguje to dle o?ekávání. Pom?rn? dob?e. Nebyl ?as.
 
 \bibliographystyle{alpha}
 \begin{flushleft}
