@@ -218,6 +218,7 @@ int wrapped_main(int argc, char** argv)
 	{
 		ShaderProgram *volumeComputationProgram = control->getProgram("volumeComputation");
 
+		volumeComputationProgram->addShader(GL_COMPUTE_SHADER, "./glsl/volume-computation-common/common.glsl");
 		volumeComputationProgram->addShader(GL_COMPUTE_SHADER, "./glsl/volume-computation/compute.glsl");
 
 		if (!volumeComputationProgram->linkProgram()) {
@@ -525,7 +526,7 @@ int wrapped_main(int argc, char** argv)
 	bool rotate = true;
 	
 	bool drawShadowVolume = false;
-	Method method = Method::gpuCompute;
+	Method method = Method::cpu;
 	
 	auto ticks = SDL_GetTicks();
 	auto ticksDelta = 0;
@@ -719,9 +720,9 @@ int wrapped_main(int argc, char** argv)
 
 					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, simpleVbo);
 					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, simpleIbo);
-					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, shadowVolumeBuffer);
-					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, shadowVolumeComputationInfo);
-					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, edgeLookupBuffer);
+					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, edgeLookupBuffer);
+					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, shadowVolumeBuffer);
+					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, shadowVolumeComputationInfo);
 
 					auto indexOffsetLocation = glGetUniformLocation(program->id, "indexOffset");
 					glUniform1ui(indexOffsetLocation, simplifiedModel.baseIndex);
