@@ -79,18 +79,16 @@ void emitTriangle(uint idx, vec3 a, vec3 b, vec3 c, int multiplicity)
 	OutVertex outVertex3;
 
 	outVertex1.multiplicity = multiplicity;
-	outVertex2.multiplicity = multiplicity;
-	outVertex3.multiplicity = multiplicity;
-
-	
-	
 	outVertex1.position = vec4(a, 1.0);
-	outVertices[idx] = outVertex1;
-
+	
+	outVertex2.multiplicity = multiplicity;
 	outVertex2.position = vec4(b, 1.0);
-	outVertices[idx + 1] = outVertex2;
-
+	
+	outVertex3.multiplicity = multiplicity;
 	outVertex3.position = vec4(c, 1.0);
+	
+	outVertices[idx] = outVertex1;
+	outVertices[idx + 1] = outVertex2;
 	outVertices[idx + 2] = outVertex3;
 }
 

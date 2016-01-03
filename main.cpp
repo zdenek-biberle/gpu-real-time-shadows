@@ -141,7 +141,7 @@ int wrapped_main(int argc, char** argv)
 	GLuint stencilTextureID;
 
 	//add programs to control..
-
+	std::cout << "Kompilujeme shadery" << std::endl;
 	Control *control = Control::getInstance();
 
 	control->recomputeProjections(windowWidth, windowHeight);
@@ -243,6 +243,7 @@ int wrapped_main(int argc, char** argv)
 		auto volumeComputationGeometryProgram = control->getProgram("volumeComputationGeometry");
 		
 		volumeComputationGeometryProgram->addShader(GL_VERTEX_SHADER, "./glsl/volume-computation-geometry/vert.glsl");
+		volumeComputationGeometryProgram->addShader(GL_GEOMETRY_SHADER, "./glsl/volume-computation-common/common.glsl");
 		volumeComputationGeometryProgram->addShader(GL_GEOMETRY_SHADER, "./glsl/volume-computation-geometry/geometry.glsl");
 		volumeComputationGeometryProgram->addShader(GL_FRAGMENT_SHADER, "./glsl/volume-computation-geometry/frag.glsl");
 		
@@ -786,21 +787,18 @@ int wrapped_main(int argc, char** argv)
 
 			auto mvLocation = glGetUniformLocation(program->id, "mvMat");
 			auto pLocation = glGetUniformLocation(program->id, "pMat");
-
-			//for (auto modelInfo : scene) {
-				auto mvMat = view * scene[0]->transform;
-				auto mvNormMat = glm::transpose(glm::inverse(glm::mat3(mvMat)));
-				glUniformMatrix4fv(mvLocation, 1, GL_FALSE, glm::value_ptr(mvMat));
-				glUniformMatrix4fv(pLocation, 1, GL_FALSE, glm::value_ptr(pMat));
-				glDrawElements(GL_TRIANGLES, (GLsizei) scene[0]->indexCount, GL_UNSIGNED_INT, reinterpret_cast<void*>(scene[0]->baseIndex * sizeof(GLuint)));
-			//}
-
+			
+			auto mvMat = view * scene[1]->transform;
+			auto mvNormMat = glm::transpose(glm::inverse(glm::mat3(mvMat)));
+			glUniformMatrix4fv(mvLocation, 1, GL_FALSE, glm::value_ptr(mvMat));
+			glUniformMatrix4fv(pLocation, 1, GL_FALSE, glm::value_ptr(pMat));
+			
+			glDrawElements(GL_TRIANGLES, (GLsizei) scene[0]->indexCount, GL_UNSIGNED_INT, reinterpret_cast<void*>(scene[0]->baseIndex * sizeof(GLuint)));
+			
 			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 			glBindVertexArray(0);
 
 			glUseProgram(0);
-
-
 
 			///////////////////////////////////////////////////////////////////////////////////////////////////////
 			/*
@@ -853,7 +851,42 @@ int wrapped_main(int argc, char** argv)
 				
 				case Method::gpuGeometry:
 				{
+					program = control->getProgram("volumeComputationGeometry");
+					program->useProgram();
+					glBindVertexArray(stencilVAO_GPU_geometry);
 					
+					//nepotrebujeme zaznamenavat barvu
+					glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+					glEnable(GL_DEPTH_TEST);
+					glDepthMask(GL_FALSE);
+					glDepthFunc(GL_GEQUAL);
+
+					glBindImageTexture(0, stencilTextureID, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32I);
+					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, simpleVbo);
+					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, simpleIbo);
+					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, edgeLookupBuffer);
+					
+					auto mvLocation = glGetUniformLocation(program->id, "mvMat");
+					auto pLocation = glGetUniformLocation(program->id, "pMat");
+
+					auto mvMat = view * scene[1]->transform;
+					auto mvNormMat = glm::transpose(glm::inverse(glm::mat3(mvMat)));
+					glUniformMatrix4fv(mvLocation, 1, GL_FALSE, glm::value_ptr(mvMat));
+					glUniformMatrix4fv(pLocation, 1, GL_FALSE, glm::value_ptr(pMat));
+					
+					auto lightPosLocation = glGetUniformLocation(program->id, "lightPos");
+					glUniform3fv(lightPosLocation, 1, glm::value_ptr(lightPosition));
+					
+					auto indexCountLocation = glGetUniformLocation(program->id, "indexCount");
+					glUniform1ui(indexCountLocation, simplifiedModel.indexCount);
+					
+					std::cout << "simple model: " << simplifiedModel.indexCount << ", " << simplifiedModel.baseIndex << std::endl;
+					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, simpleIbo);
+					glDrawElements(GL_TRIANGLES, (GLsizei) simplifiedModel.indexCount, GL_UNSIGNED_INT, reinterpret_cast<void*>(simplifiedModel.baseIndex * sizeof(GLuint)));
+					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+					
+					glBindVertexArray(0);
+					glUseProgram(0);
 					break;
 				}
 			}
@@ -975,7 +1008,7 @@ int wrapped_main(int argc, char** argv)
 			 * Vizualizace shadow volume.
 			 */
 
-			if (control->getProgram("volumeVisualization")->id != 0 && drawShadowVolume && method == Method::cpu && method == Method::gpuCompute)
+			if (control->getProgram("volumeVisualization")->id != 0 && drawShadowVolume && (method == Method::cpu || method == Method::gpuCompute))
 			{
 				ShaderProgram *program = control->getProgram("volumeVisualization");
 
@@ -1016,7 +1049,6 @@ int wrapped_main(int argc, char** argv)
 			/*
 			 * Na zaver vykresleni statistik behu.
 			 */
-
 			control->getProgram("font")->useProgram();
 
 			glm::mat4 camMatrix(1.0f);
@@ -1074,6 +1106,7 @@ int wrapped_main(int argc, char** argv)
 
 	std::cout << "Prumerny cas snimku: " << fps->getAvgRenderTime() << " ms => " << fps->getAvgFps() << " fps\nStisknete Enter pro ukonceni." << std::endl;
 	std::cin.ignore();
+	return 0;
 }
 
 int main(int argc, char** argv)
