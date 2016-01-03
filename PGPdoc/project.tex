@@ -1,0 +1,143 @@
+%--------------------------------------------------------------------------------
+%\documentclass{article}
+
+\documentclass[a4paper, 12pt]{article}
+\usepackage[T1]{fontenc} 
+\usepackage[bf]{caption}
+\usepackage{hyperref}
+\usepackage[all]{hypcap}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage[czech, english]{babel}
+\selectlanguage{czech}
+\usepackage{subfig}                % \subfloat
+\usepackage{color}
+\usepackage{url}
+\inputencoding{utf8}
+%\usepackage[bf]{caption2}
+\usepackage{hyperref}
+\usepackage[all]{hypcap}
+\hypersetup{colorlinks=false, linkbordercolor=1 1 1, citebordercolor=1 1 1}
+\usepackage[right]{lineno}
+\renewcommand\linenumberfont{\normalfont\tiny\color{blue}}
+
+
+\title{Dokumentace projektu}
+\author{Vít Hodes <xhodes00@stud.fit.vutbr.cz>}
+\author{Zden?k Biberle <xbiber00@stud.fit.vutbr.cz>}
+\date{\today}
+
+
+%--------------------------------------------------------------------------------
+
+
+\begin{document}
+\selectlanguage{czech}
+\maketitle
+
+\section{Ãšvod}
+
+
+Tato práce se zabıvá implementací algoritmu Real Time Shadow of Transparent Casters Using Shadow
+Volume, kterı jak ji název nazna?uje, popisuje zp?sob ?ešení stín? pomocí objemovıch t?les, aplikovatelnı i
+na neuzav?ené modely a tedy i obecné trojuhelníky - tzv. triangle soup. Dále algoritmus popisuje
+postup tvorby pr?hlednıch stín? a jejich problémy a moné ?ešení.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Teorie}
+
+Tady v tÃ© kapitole je napsanÃ© jak to funguje. IdeÃ¡lnÄ› nÄ›jaka ta rovnice, napÅ™. \ref{moje-rovnice}. Potom by
+tady mÄ›la byt uvedena literatura, ze kterÃ© bylo Äerpano, napÅ™Ã­klad "Metody sledovÃ¡nÃ­ paprsku jsou popsanÃ© v \cite{Byungmoon2007}"
+
+
+\begin{equation}
+  \label{moje-rovnice}
+  c = a + b
+\end{equation}
+
+Na obrÃ¡zku \ref{fig:obrazek} je ukÃ¡zanÃ© jak to funguje. NÄ›jakÃ© schÃ©mÃ¡tko pipeline..
+
+\begin{figure}[htb]
+  \centering
+  \includegraphics[width=5cm,keepaspectratio]{obrazek.jpg}
+  \caption{NÄ›jakÃ½ ten diagram, tÅ™eba pÅ™evzanÃ½ }
+  \label{fig:obrazek}
+\end{figure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Popis Å™eÅ¡enÃ­}
+
+Tady struÄnÄ› popiÅ¡te, jakÃ½m zpÅ¯sobem jste prakticky projekt Å™eÅ¡ili. UveÄte zejmÃ©na pouÅ¾itÃ©
+technologie a algoritmy. ZamÄ›Å™te se hlavnÄ› na zajÃ­mavÃ© a dÅ¯leÅ¾itÃ© ÄÃ¡sti implementace a takÃ© na
+problÃ©my, kterÃ© jste Å™eÅ¡ili. NenÃ­ nutnÃ© popisovat kaÅ¾dou tÅ™Ã­du.
+
+NapÅ™. uveÄte, jak jste matematickÃ½ popis z pÅ™edchozÃ­ kapitoly implementovali prakticky.
+
+
+Bylo implementováno referen?ní CPU ?ešení, které bylo p?evád?no do compute a geometry shader?.
+?ešení se skládá prakticky ze dvou ?ástí - spo?ítání objemovıch t?les zvolenou metodou a potom
+samotnı proces vygenerování stín? a vykreslení.
+
+Na za?átku se p?edzpracují modely tak, e se odstraní duplikované vrcholy a vygenerují se nové
+vertex a element vektory. Pak se vygeneruje tzv. edgeLookup vektor, ve kterém se z trojuhelník? 
+vytvo?í se?azená mnoina hran s t?etím nehranovım vrcholem a id trojuhelníku. Hrany jsou se?azeny
+ podle vrcholu 1, pak vrcholu 2 a nakonec podle id trojuhelníku. Toto se?azení umo?uje aby kadou 
+sdílenou hranu pak zpracovával jen jeden trojuhelník (ten s nejniším id).
+
+Implementace algoritmu se v jednotlivıch implementacích p?íliš neliší. Ve všech p?ípadech jsou na
+vstupu vrcholy modelu, element vektor definující jednotlivé trojuhelníky, edgeLookup, pozice sv?tla a 
+poadovaná délka extrudovaného stínu. V compute a geometry shaderech jsou tyto data v SSBO strukturách
+(krom? pozice sv?tla a délky stínu - ty jsou oby?ejné uniformy).
+ 
+Pro kadı trojuhelník, pokud je p?ivrácenı ke sv?tlu, se vygeneruje novı extrudovanı o p?íslušnou vzdálenost
+od sv?tla. Pro kadou jeho hranu se nalezne trojuhelník s nejniším indexem, kterı ji obsahuje a podle
+jeho orientace se nastaví multiplicita hrany (tj zda stín generuje ?í nikoliv).
+Pokud je vısledná multiplicita nenulová, vytvo?í se z p?íslušné hrany st?na objemového t?lesa.
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Ovládání­}
+
+T - zapne vykreslování objemovıch t?les
+C - p?epíná mezi metodami generování objemovıch t?les
+I - zapne zobrazení statistik b?hu programu
+R - zastaví rotaci scény
+Myš - rotace okolo po?átku scény
+Kole?ko - p?iblíení/oddálení pohledu ve scén?
+Esc - ukon?í b?h openGL programu, Enter potom celé aplikace
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{VyhodnocenÃ­}
+
+Tady by mÄ›lo bÃ½t napsanÃ© jak to funguje. ProtoÅ¾e se jednÃ¡ o poÄÃ­taÄovou grafiku nebo 
+vidÄ›nÃ­, tak by tady mÄ›l byt screenshot, ze ktereho bude poznat jak to funguje.
+K tomu by mÄ›la bÃ½t idealnÄ› tabulka s vyhodnocenÃ­m jak pÅ™esnÄ›/rychle to funguje. 
+
+I p?es problémy s AMD hardwarem se nakonec poda?ilo implementaci v compute shaderech zprovoznit.
+Problémy byly v paddingu vstupních struktur i samotné implementaci algoritmu, kde se po?ítaly
+n?které trojuhelníky navíc. 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{ZÃ¡vÄ›r}
+
+Tady by mÄ›lo bÃ½t struÄnÄ› napsanÃ© jak to funguje.
+
+--znova psat jak to funguje?? 
+
+\bibliographystyle{alpha}
+\begin{flushleft}
+  \bibliography{project}
+\end{flushleft}
+
+%\appendix
+%\newpage
+%\section{}
+
+\end{document}
