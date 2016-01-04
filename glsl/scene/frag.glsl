@@ -20,7 +20,10 @@ void main()
 	
 	vec3 normNormal = normalize(IN.normal);
 	vec3 diffuse = vec3(max(0.0, dot(normNormal, -lightDir)));
-	vec3 light = pow(1.0 - shadowCasterOpacity, max(0,number)) * diffuse + ambient;
+	float diffuseAmt = number == 0 
+			? 1.0 
+			: pow(1.0 - shadowCasterOpacity, max(0,number));
+	vec3 light = diffuseAmt * diffuse + ambient;
 
 	outColor = vec4(color * light, 1.0);
 }
