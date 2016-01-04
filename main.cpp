@@ -56,7 +56,7 @@ int wrapped_main(int argc, char** argv)
 
 	auto environmentModelFilename = std::string(argv[1]);
 	auto shadowModelFilename = std::string(argv[2]);
-	vec3 lightPosition = vec3(4.0, 4.0, 2.0);
+	vec3 lightDirection = glm::normalize(vec3(-1, -1, -0.25)); //smerova svetla pro jednoduchost
 	SDL_Init(SDL_INIT_VIDEO);
 
 	int windowWidth = 1024;
@@ -141,7 +141,7 @@ int wrapped_main(int argc, char** argv)
 	GLuint stencilTextureID;
 
 	//add programs to control..
-
+	std::cout << "Kompilujeme shadery" << std::endl;
 	Control *control = Control::getInstance();
 
 	control->recomputeProjections(windowWidth, windowHeight);
@@ -152,6 +152,7 @@ int wrapped_main(int argc, char** argv)
 	control->addProgram("volumeComputation");
 	control->addProgram("volumeComputationGeometry");
 	control->addProgram("volumeVisualization");
+	control->addProgram("volumeVisualizationGeometry");
 	control->addProgram("font");
 	control->addProgram("caster");
 
@@ -243,6 +244,7 @@ int wrapped_main(int argc, char** argv)
 		auto volumeComputationGeometryProgram = control->getProgram("volumeComputationGeometry");
 		
 		volumeComputationGeometryProgram->addShader(GL_VERTEX_SHADER, "./glsl/volume-computation-geometry/vert.glsl");
+		volumeComputationGeometryProgram->addShader(GL_GEOMETRY_SHADER, "./glsl/volume-computation-common/common.glsl");
 		volumeComputationGeometryProgram->addShader(GL_GEOMETRY_SHADER, "./glsl/volume-computation-geometry/geometry.glsl");
 		volumeComputationGeometryProgram->addShader(GL_FRAGMENT_SHADER, "./glsl/volume-computation-geometry/frag.glsl");
 		
@@ -252,6 +254,20 @@ int wrapped_main(int argc, char** argv)
 		}
 	}
 
+	{
+		auto volumeVisualizationGeometryProgram = control->getProgram("volumeVisualizationGeometry");
+		
+		volumeVisualizationGeometryProgram->addShader(GL_VERTEX_SHADER, "./glsl/volume-computation-geometry/vert.glsl");
+		volumeVisualizationGeometryProgram->addShader(GL_GEOMETRY_SHADER, "./glsl/volume-computation-common/common.glsl");
+		volumeVisualizationGeometryProgram->addShader(GL_GEOMETRY_SHADER, "./glsl/volume-computation-geometry/geometry.glsl");
+		volumeVisualizationGeometryProgram->addShader(GL_FRAGMENT_SHADER, "./glsl/volume-visualization-geometry/frag.glsl");
+		
+		if (!volumeVisualizationGeometryProgram->linkProgram()) {
+			std::cin.ignore();
+			exit(1);
+		}
+	}
+	
 	//create font sampler
 	Sampler *sampler = control->addSampler("font");
 
@@ -402,6 +418,24 @@ int wrapped_main(int argc, char** argv)
 
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+	glBindVertexArray(0);
+	
+	//set up vao for shadow volume display - from gpu, via geometry shaders
+	GLuint shadowVolumeVAO_CPU_geometry;
+	glGenVertexArrays(1, &shadowVolumeVAO_CPU_geometry);
+	glBindVertexArray(shadowVolumeVAO_CPU_geometry);
+
+		glBindBuffer(GL_ARRAY_BUFFER, simpleVbo);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, simpleIbo);
+
+		glEnableVertexAttribArray(0);
+
+		// pozice
+		glVertexAttribPointer(0u, 3, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(SimpleVertex), reinterpret_cast<void*>(offsetof(SimpleVertex, _x)));
+
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
 	glBindVertexArray(0);
 
@@ -654,6 +688,8 @@ int wrapped_main(int argc, char** argv)
 				frameTickCounter = 0;
 				frameComputationTickCounter = 0;
 			}
+			
+			lightDirection = glm::normalize(vec3(std::sin(ticks * 0.001), -1, -std::cos(ticks * 0.001)));
 		}
 		
 		try
@@ -685,7 +721,7 @@ int wrapped_main(int argc, char** argv)
 					shadowVolumeInfo = compute(
 						simplifiedModel.baseIndex,
 						simplifiedModel.indexCount,
-						lightPosition,
+						lightDirection,
 						80.0f,
 						simplifiedVertices,
 						simplifiedIndices,
@@ -714,9 +750,8 @@ int wrapped_main(int argc, char** argv)
 					//glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, sizeof(ShadowVolumeComputationInfo), &shadowVolumeInfo);
 					glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0);
 
-					auto lightPosLocation = glGetUniformLocation(program->id, "lightPos");
-
-					glUniform3fv(lightPosLocation, 1, glm::value_ptr(lightPosition));
+					auto lightDirLocation = glGetUniformLocation(program->id, "lightDir");
+					glUniform3fv(lightDirLocation, 1, glm::value_ptr(lightDirection));
 
 					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, simpleVbo);
 					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, simpleIbo);
@@ -786,21 +821,23 @@ int wrapped_main(int argc, char** argv)
 
 			auto mvLocation = glGetUniformLocation(program->id, "mvMat");
 			auto pLocation = glGetUniformLocation(program->id, "pMat");
-
-			//for (auto modelInfo : scene) {
-				auto mvMat = view * scene[0]->transform;
+			
+			
+			for (auto model : scene)
+			{
+				//auto& model = scene[0];
+				auto mvMat = view * model->transform;
 				auto mvNormMat = glm::transpose(glm::inverse(glm::mat3(mvMat)));
 				glUniformMatrix4fv(mvLocation, 1, GL_FALSE, glm::value_ptr(mvMat));
 				glUniformMatrix4fv(pLocation, 1, GL_FALSE, glm::value_ptr(pMat));
-				glDrawElements(GL_TRIANGLES, (GLsizei) scene[0]->indexCount, GL_UNSIGNED_INT, reinterpret_cast<void*>(scene[0]->baseIndex * sizeof(GLuint)));
-			//}
-
+				
+				glDrawElements(GL_TRIANGLES, (GLsizei) model->indexCount, GL_UNSIGNED_INT, reinterpret_cast<void*>(model->baseIndex * sizeof(GLuint)));
+			}
+			
 			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 			glBindVertexArray(0);
 
 			glUseProgram(0);
-
-
 
 			///////////////////////////////////////////////////////////////////////////////////////////////////////
 			/*
@@ -823,14 +860,11 @@ int wrapped_main(int argc, char** argv)
 						glBindVertexArray(stencilVAO_GPU);
 						
 					}
-
-					
 					
 					glEnable(GL_DEPTH_TEST);
 					glDepthMask(GL_FALSE);
 					glDepthFunc(GL_GEQUAL);
-
-
+					
 					glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);  
 
 						glBindImageTexture(0, stencilTextureID, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32I);
@@ -853,7 +887,41 @@ int wrapped_main(int argc, char** argv)
 				
 				case Method::gpuGeometry:
 				{
+					program = control->getProgram("volumeComputationGeometry");
+					program->useProgram();
+					glBindVertexArray(stencilVAO_GPU_geometry);
 					
+					//nepotrebujeme zaznamenavat barvu
+					glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+					glEnable(GL_DEPTH_TEST);
+					glDepthMask(GL_FALSE);
+					glDepthFunc(GL_GEQUAL);
+
+					glBindImageTexture(0, stencilTextureID, 0, GL_FALSE, 0, GL_READ_WRITE, GL_R32I);
+					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, simpleVbo);
+					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, simpleIbo);
+					glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, edgeLookupBuffer);
+					
+					auto mvLocation = glGetUniformLocation(program->id, "mvMat");
+					auto pLocation = glGetUniformLocation(program->id, "pMat");
+
+					auto mvMat = view * scene[1]->transform;
+					auto mvNormMat = glm::transpose(glm::inverse(glm::mat3(mvMat)));
+					glUniformMatrix4fv(mvLocation, 1, GL_FALSE, glm::value_ptr(mvMat));
+					glUniformMatrix4fv(pLocation, 1, GL_FALSE, glm::value_ptr(pMat));
+					
+					auto lightDirLocation = glGetUniformLocation(program->id, "lightDir");
+					glUniform3fv(lightDirLocation, 1, glm::value_ptr(lightDirection));
+					
+					auto indexCountLocation = glGetUniformLocation(program->id, "indexCount");
+					glUniform1ui(indexCountLocation, simplifiedModel.indexCount);
+					
+					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, simpleIbo);
+					glDrawElements(GL_TRIANGLES, (GLsizei) simplifiedModel.indexCount, GL_UNSIGNED_INT, reinterpret_cast<void*>(simplifiedModel.baseIndex * sizeof(GLuint)));
+					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+					
+					glBindVertexArray(0);
+					glUseProgram(0);
 					break;
 				}
 			}
@@ -862,153 +930,173 @@ int wrapped_main(int argc, char** argv)
 			/*
 			 *Vykresleni sceny se vsim vsudy. Vyuziva pro vykresleni stinu informace ze "stencil" textury.
 			 */
-			
-			program = control->getProgram("lighting");
+			glClear(GL_DEPTH_BUFFER_BIT); 
+			glEnable(GL_DEPTH_TEST);
+			glDepthMask(GL_TRUE);
+			glDepthFunc(GL_LESS);
+			glClear(GL_DEPTH_BUFFER_BIT);
+			glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+			glEnable(GL_CULL_FACE);
+			glCullFace(GL_BACK);
+			{
+				program = control->getProgram("lighting");
 
-			program->useProgram();
-			
+				program->useProgram();
+					glBindVertexArray(sceneVAO);
 
-				glBindVertexArray(sceneVAO);
+						glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+						
+						//draw scene with lighting
+						//reuse previously declared variables
+						mvLocation = glGetUniformLocation(program->id, "mvMat");
+						auto mvNormLocation = glGetUniformLocation(program->id, "mvNormMat");
+						pLocation = glGetUniformLocation(program->id, "pMat");
 
-				glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+						//	GLuint unit, GLuint texture, GLint level, GLboolean layered, GLint layer, GLenum access, GLenum format
+						glBindImageTexture(0, stencilTextureID, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32I);
 
-					glEnable(GL_DEPTH_TEST);
-					glDepthMask(GL_TRUE);
-					glDepthFunc(GL_LESS);
-					glClear(GL_DEPTH_BUFFER_BIT); 
-					glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-
-					//draw scene with lighting
-
-					//reuse previously declared variables
-					mvLocation = glGetUniformLocation(program->id, "mvMat");
-					auto mvNormLocation = glGetUniformLocation(program->id, "mvNormMat");
-					pLocation = glGetUniformLocation(program->id, "pMat");
-
-					//	GLuint unit, GLuint texture, GLint level, GLboolean layered, GLint layer, GLenum access, GLenum format
-					glBindImageTexture(0, stencilTextureID, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32I);
-
-					glUniformMatrix4fv(pLocation, 1, GL_FALSE, glm::value_ptr(pMat));
-
-					auto lightDirLocation = glGetUniformLocation(program->id, "lightDir");
-
-					if (lightDirLocation != -1)
-					{
-						auto lightDir = -glm::normalize(lightPosition);		
-						lightDir = glm::mat3(view) * lightDir;
-						glUniform3fv(lightDirLocation, 1, glm::value_ptr(lightDir));
-					}
-
-					GLuint colorLocation = glGetUniformLocation(program->id, "color");
-
-						mvMat = view * scene[0]->transform;
-						mvNormMat = glm::transpose(glm::inverse(glm::mat3(mvMat)));
+						glUniformMatrix4fv(pLocation, 1, GL_FALSE, glm::value_ptr(pMat));
+						
+						auto lightDirLocation = glGetUniformLocation(program->id, "lightDir");
+						auto colorLocation = glGetUniformLocation(program->id, "color");
+						
+						auto mvMat = view * scene[0]->transform;
+						auto mvNormMat = glm::transpose(glm::inverse(glm::mat3(mvMat)));
+						auto transformedLightDirection = glm::mat3(view * scene[1]->transform) * lightDirection;
+						
 						glUniformMatrix4fv(mvLocation, 1, GL_FALSE, glm::value_ptr(mvMat));
 						glUniformMatrix3fv(mvNormLocation, 1, GL_FALSE, glm::value_ptr(mvNormMat));
+						glUniform3fv(lightDirLocation, 1, glm::value_ptr(transformedLightDirection));
 						glUniform3fv(colorLocation, 1, glm::value_ptr(scene[0]->color));
 
 						glDrawElements(GL_TRIANGLES, (GLsizei) scene[0]->indexCount, GL_UNSIGNED_INT, reinterpret_cast<void*>(scene[0]->baseIndex * sizeof(GLuint)));
-					
 
-					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+						glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
-				glBindVertexArray(0);
+					glBindVertexArray(0);
+				glUseProgram(0);
+			}
 
-			glUseProgram(0);
-	
+			{
+				program = control->getProgram("caster");
 
+				program->useProgram();
+					glBindVertexArray(sceneVAO);
 
-			program = control->getProgram("caster");
+						glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+						
+						//draw scene with lighting
+						//reuse previously declared variables
+						mvLocation = glGetUniformLocation(program->id, "mvMat");
+						auto mvNormLocation = glGetUniformLocation(program->id, "mvNormMat");
+						pLocation = glGetUniformLocation(program->id, "pMat");
 
-			program->useProgram();
+						//	GLuint unit, GLuint texture, GLint level, GLboolean layered, GLint layer, GLenum access, GLenum format
+						glBindImageTexture(0, stencilTextureID, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32I);
 
-				glBindVertexArray(sceneVAO);
+						glUniformMatrix4fv(pLocation, 1, GL_FALSE, glm::value_ptr(pMat));
 
-					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+						auto lightDirLocation = glGetUniformLocation(program->id, "lightDir");
+						auto colorLocation = glGetUniformLocation(program->id, "color");
+						
+						auto mvMat = view * scene[1]->transform;
+						auto mvNormMat = glm::transpose(glm::inverse(glm::mat3(mvMat)));
+						auto transformedLightDirection = glm::mat3(mvMat) * lightDirection;
+						
+						glUniformMatrix4fv(mvLocation, 1, GL_FALSE, glm::value_ptr(mvMat));
+						glUniformMatrix3fv(mvNormLocation, 1, GL_FALSE, glm::value_ptr(mvNormMat));
+						glUniform3fv(lightDirLocation, 1, glm::value_ptr(transformedLightDirection));
+						glUniform3fv(colorLocation, 1, glm::value_ptr(scene[1]->color));
 
-					glEnable(GL_DEPTH_TEST);
-					glDepthMask(GL_TRUE);
-					glDepthFunc(GL_LESS);
-					glClear(GL_DEPTH_BUFFER_BIT);
-					glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-
-					//draw scene with lighting
-
-					//reuse previously declared variables
-					mvLocation = glGetUniformLocation(program->id, "mvMat");
-					mvNormLocation = glGetUniformLocation(program->id, "mvNormMat");
-					pLocation = glGetUniformLocation(program->id, "pMat");
-
-					//	GLuint unit, GLuint texture, GLint level, GLboolean layered, GLint layer, GLenum access, GLenum format
-					glBindImageTexture(0, stencilTextureID, 0, GL_FALSE, 0, GL_READ_ONLY, GL_R32I);
-
-					glUniformMatrix4fv(pLocation, 1, GL_FALSE, glm::value_ptr(pMat));
-
-					lightDirLocation = glGetUniformLocation(program->id, "lightDir");
-
-					if (lightDirLocation != -1) {
-						auto lightDir = -glm::normalize(lightPosition);
-						lightDir = glm::mat3(view) * lightDir;
-						glUniform3fv(lightDirLocation, 1, glm::value_ptr(lightDir));
-					}
-
-					colorLocation = glGetUniformLocation(program->id, "color");
-
-					
-					mvMat = view * scene[1]->transform;
-					mvNormMat = glm::transpose(glm::inverse(glm::mat3(mvMat)));
-					glUniformMatrix4fv(mvLocation, 1, GL_FALSE, glm::value_ptr(mvMat));
-					glUniformMatrix3fv(mvNormLocation, 1, GL_FALSE, glm::value_ptr(mvNormMat));
-					glUniform3fv(colorLocation, 1, glm::value_ptr(scene[1]->color));
-
-					glDrawElements(GL_TRIANGLES, (GLsizei) scene[1]->indexCount, GL_UNSIGNED_INT, reinterpret_cast<void*>(scene[1]->baseIndex * sizeof(GLuint)));
-					
-
-
-					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-				glBindVertexArray(0);
-
-			glUseProgram(0);
+						glDrawElements(GL_TRIANGLES, (GLsizei) scene[1]->indexCount, GL_UNSIGNED_INT, reinterpret_cast<void*>(scene[1]->baseIndex * sizeof(GLuint)));
+						
+						glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+			
+					glBindVertexArray(0);
+				glUseProgram(0);
+			}
+			
+			glDisable(GL_CULL_FACE);
+			
 			///////////////////////////////////////////////////////////////////////////////////////////////////////
 			/*
 			 * Vizualizace shadow volume.
 			 */
 
-			if (control->getProgram("volumeVisualization")->id != 0 && drawShadowVolume && method == Method::cpu && method == Method::gpuCompute)
+			if (control->getProgram("volumeVisualization")->id != 0 && drawShadowVolume)
 			{
-				ShaderProgram *program = control->getProgram("volumeVisualization");
+				glEnable(GL_BLEND);
+				glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+				glDepthMask(GL_FALSE);
+			
+				switch(method)
+				{
+					case Method::cpu:
+					case Method::gpuCompute:
+					{
+						ShaderProgram *program = control->getProgram("volumeVisualization");
 
-				program->useProgram();
+						program->useProgram();
 
-				if (method == Method::cpu){
-					glBindVertexArray(shadowVolumeVAO_CPU);
-				}
-				else{
-					glBindVertexArray(shadowVolumeVAO);
+						if (method == Method::cpu){
+							glBindVertexArray(shadowVolumeVAO_CPU);
+						}
+						else{
+							glBindVertexArray(shadowVolumeVAO);
+						}
+						
+						auto mvLocation = glGetUniformLocation(program->id, "mvMat");
+						auto mvNormLocation = glGetUniformLocation(program->id, "mvNormMat");
+						auto pLocation = glGetUniformLocation(program->id, "pMat");
+						
+						auto mvMat = view * shadowModel.transform;
+						auto mvNormMat = glm::transpose(glm::inverse(glm::mat3(mvMat)));
+						
+						glUniformMatrix4fv(mvLocation, 1, GL_FALSE, glm::value_ptr(mvMat));
+						glUniformMatrix3fv(mvNormLocation, 1, GL_FALSE, glm::value_ptr(mvNormMat));
+						glUniformMatrix4fv(pLocation, 1, GL_FALSE, glm::value_ptr(pMat));
+						
+						glDrawArrays(GL_TRIANGLES, 0, shadowVolumeInfo.triCount * 3);
+						
+						break;
+					}
+					
+					case Method::gpuGeometry:
+					{
+						ShaderProgram *program = control->getProgram("volumeVisualizationGeometry");
+						program->useProgram();
+						glBindVertexArray(shadowVolumeVAO_CPU_geometry);
+						
+						glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, simpleVbo);
+						glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, simpleIbo);
+						glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, edgeLookupBuffer);
+						
+						auto mvLocation = glGetUniformLocation(program->id, "mvMat");
+						auto pLocation = glGetUniformLocation(program->id, "pMat");
+
+						auto mvMat = view * scene[1]->transform;
+						auto mvNormMat = glm::transpose(glm::inverse(glm::mat3(mvMat)));
+						glUniformMatrix4fv(mvLocation, 1, GL_FALSE, glm::value_ptr(mvMat));
+						glUniformMatrix4fv(pLocation, 1, GL_FALSE, glm::value_ptr(pMat));
+						
+						auto lightDirLocation = glGetUniformLocation(program->id, "lightDir");
+						glUniform3fv(lightDirLocation, 1, glm::value_ptr(lightDirection));
+						
+						auto indexCountLocation = glGetUniformLocation(program->id, "indexCount");
+						glUniform1ui(indexCountLocation, simplifiedModel.indexCount);
+						
+						glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, simpleIbo);
+						glDrawElements(GL_TRIANGLES, (GLsizei) simplifiedModel.indexCount, GL_UNSIGNED_INT, reinterpret_cast<void*>(simplifiedModel.baseIndex * sizeof(GLuint)));
+						glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+						
+						break;
+					}
 				}
 				
-					glEnable(GL_BLEND);
-					glBlendFunc(GL_SRC_ALPHA, GL_ONE);
-					glDepthMask(GL_FALSE);
-					
-					auto mvLocation = glGetUniformLocation(program->id, "mvMat");
-					auto mvNormLocation = glGetUniformLocation(program->id, "mvNormMat");
-					auto pLocation = glGetUniformLocation(program->id, "pMat");
-					
-					auto mvMat = view * shadowModel.transform;
-					auto mvNormMat = glm::transpose(glm::inverse(glm::mat3(mvMat)));
-					
-					glUniformMatrix4fv(mvLocation, 1, GL_FALSE, glm::value_ptr(mvMat));
-					glUniformMatrix3fv(mvNormLocation, 1, GL_FALSE, glm::value_ptr(mvNormMat));
-					glUniformMatrix4fv(pLocation, 1, GL_FALSE, glm::value_ptr(pMat));
-					
-					glDrawArrays(GL_TRIANGLES, 0, shadowVolumeInfo.triCount * 3);
-
 				glBindVertexArray(0);
 				glUseProgram(0);
-				
 				glDepthMask(GL_TRUE);
+				glDisable(GL_BLEND);
 			}
 		
 			
@@ -1016,7 +1104,6 @@ int wrapped_main(int argc, char** argv)
 			/*
 			 * Na zaver vykresleni statistik behu.
 			 */
-
 			control->getProgram("font")->useProgram();
 
 			glm::mat4 camMatrix(1.0f);
@@ -1074,6 +1161,7 @@ int wrapped_main(int argc, char** argv)
 
 	std::cout << "Prumerny cas snimku: " << fps->getAvgRenderTime() << " ms => " << fps->getAvgFps() << " fps\nStisknete Enter pro ukonceni." << std::endl;
 	std::cin.ignore();
+	return 0;
 }
 
 int main(int argc, char** argv)

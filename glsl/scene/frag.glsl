@@ -18,9 +18,9 @@ void main()
 	
 	vec3 normNormal = normalize(IN.normal);
 	vec3 diffuse = vec3(max(0.0, dot(normNormal, -lightDir)));
-	vec3 light = (number > 0 ? 0 : 1) * diffuse + ambient;
+	vec3 light = (1.0 - clamp(number, 0, 8) * 0.125) * diffuse + ambient;
 
-	outColor.z = 1.0;
+	outColor.z = 0.01;
 	outColor.xyz = color * light;
 }
 

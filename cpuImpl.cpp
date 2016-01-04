@@ -86,8 +86,7 @@ unsigned doEdgeLookup(const std::vector<EdgeLookupNode>& edgeLookup, unsigned ed
 ShadowVolumeComputationInfo compute(
 	unsigned indexOffset,
 	unsigned indexCount,
-	//const glm::vec3& lightDir,
-	const glm::vec3& lightPos,
+	const glm::vec3& lightDir,
 	float extrusionDistance,
 	const std::vector<SimpleVertex>& inVertices, 
 	const std::vector<GLuint>& inIndices, 
@@ -111,16 +110,13 @@ ShadowVolumeComputationInfo compute(
 			glm::vec3 a1 = position(inVertices[aidx[1]]);
 			glm::vec3 a2 = position(inVertices[aidx[2]]);
 
-			
-			glm::vec3 lightDir = -glm::normalize(lightPos);
-
 			//je to privracena cast modelu - frontcap
 			if (isFrontFacing(lightDir, a0, a1, a2))
 			{
 				//emitTriangle(outVertices, a0, a1, a2, -2, 1);		//algoritmus o front capech nemluvi
 
 				//duplikace jako backcap
-				emitTriangle(outVertices, a0 + glm::normalize(a0 - lightPos) * extrusionDistance, a1 + glm::normalize(a1 - lightPos) * extrusionDistance, a2 + glm::normalize(a2 - lightPos) * extrusionDistance, -1);
+				emitTriangle(outVertices, a0 + lightDir * extrusionDistance, a1 + lightDir * extrusionDistance, a2 + lightDir * extrusionDistance, -1);
 				triCount += 1;
 			}
 
@@ -160,8 +156,8 @@ ShadowVolumeComputationInfo compute(
 					glm::vec3 edge1 = position(inVertices[edgeIndices[edgeIdx * 2 + 1]]);
 
 					//vytahnuti stran
-					emitTriangle(outVertices, edge0, edge1, edge0 + glm::normalize(edge0 - lightPos) * extrusionDistance, edgeMultiplicity);
-					emitTriangle(outVertices, edge1, edge1 + glm::normalize(edge1 - lightPos) * extrusionDistance, edge0 + glm::normalize(edge0 - lightPos) * extrusionDistance, edgeMultiplicity);
+					emitTriangle(outVertices, edge0, edge1, edge0 + lightDir * extrusionDistance, edgeMultiplicity);
+					emitTriangle(outVertices, edge1, edge1 + lightDir * extrusionDistance, edge0 + lightDir * extrusionDistance, edgeMultiplicity);
 					triCount += 2;
 				}
 			}

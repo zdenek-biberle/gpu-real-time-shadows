@@ -5,7 +5,7 @@ layout (local_size_x = 128) in;
 uniform uint indexCount;
 uniform uint indexOffset;
 uniform float extrusionDistance = 100.0;
-uniform vec3 lightPos;
+uniform vec3 lightDir;
 
 struct InVertex
 {
@@ -60,7 +60,7 @@ void generateShadowVolume(
 	uint triangleIdx,
 	uint indexCount,
 	float extrusionDistance,
-	vec3 lightPos, 
+	vec3 lightDir, 
 	InVertex vertices[3], 
 	uint indices[3]);
 
@@ -79,18 +79,16 @@ void emitTriangle(uint idx, vec3 a, vec3 b, vec3 c, int multiplicity)
 	OutVertex outVertex3;
 
 	outVertex1.multiplicity = multiplicity;
-	outVertex2.multiplicity = multiplicity;
-	outVertex3.multiplicity = multiplicity;
-
-	
-	
 	outVertex1.position = vec4(a, 1.0);
-	outVertices[idx] = outVertex1;
-
+	
+	outVertex2.multiplicity = multiplicity;
 	outVertex2.position = vec4(b, 1.0);
-	outVertices[idx + 1] = outVertex2;
-
+	
+	outVertex3.multiplicity = multiplicity;
 	outVertex3.position = vec4(c, 1.0);
+	
+	outVertices[idx] = outVertex1;
+	outVertices[idx + 1] = outVertex2;
 	outVertices[idx + 2] = outVertex3;
 }
 
@@ -114,7 +112,7 @@ void main()
 			triangleIdx,
 			indexCount,
 			extrusionDistance,
-			lightPos,
+			lightDir,
 			vertices,
 			indices);
 	}
