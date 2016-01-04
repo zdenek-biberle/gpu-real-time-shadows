@@ -23,9 +23,14 @@
 \renewcommand\linenumberfont{\normalfont\tiny\color{blue}}
 
 
-\title{Dokumentace projektu}
-\author{Vít Hodes <xhodes00@stud.fit.vutbr.cz>}
-\author{Zdeněk Biberle <xbiber00@stud.fit.vutbr.cz>}
+\title{Dokumentace projektu PGP}
+\author{
+	Vít Hodes\\
+	\texttt{xhodes00@stud.fit.vutbr.cz}
+	\and
+	Zdeněk Biberle\\
+	\texttt{xbiber00@stud.fit.vutbr.cz}
+}
 \date{\today}
 
 
@@ -96,17 +101,17 @@ vstupu vrcholy modelu, element vektor definující jednotlivé trojühelníky, e
 požadovaná délka extrudovaného stínu. V compute a geometry shaderech jsou tyto data v SSBO bufferech
 (kromě pozice světla a délky stínu - ty jsou obyčejné uniformy).
  
-Pro každý trojühelník, pokud je přivrácený ke světlu, se vygeneruje nový extrudovaný o příslušnou vzdálenost
+Pro každý trojúhelník, pokud je přivrácený ke světlu, se vygeneruje nový extrudovaný o příslušnou vzdálenost
 od světla. Pro každou jeho hranu se naleznou všechny trojühelníky, které tuto hranu sdílí, a podle jejich orientace se nastaví multiplicita hrany (tj. zda stín generuje či nikoliv).
 Pokud je výsledná multiplicita nenulová, vytvoří se z příslušné hrany stěna objemového tělesa.
 
 
 
 Postup kreslení začíná vykreslením stíněných povrchů do hloubkového bufferu, který je použitý při 
-z-fail generování "stencil" textury stínů. Při z-fail algoritmu je zápis do hloubkového bufferu vypnutý
+z-fail generování ``stencil'' textury stínů. Při z-fail algoritmu je zápis do hloubkového bufferu vypnutý
 a pro každý fragment, který má hloubku větší než je aktuální v hloubkovém bufferu, atomicky zapíše negativní
 hodnotu své multiplicity (pro fragmenty orientované od kamery je tato hodnota ve výsledku kladná a pro
-fragmenty orientované ke kameře záporná) do celočíselné "stencil" textury. Je také zapnutý early fragment test,
+fragmenty orientované ke kameře záporná) do celočíselné ``stencil'' textury. Je také zapnutý early fragment test,
 jinak by atomické operace proběhly i pro fragmenty, které se budou zahazovat.
 
 Se získanou texturou se stínem už stačí vykreslit znovu stíněné předměty a poté stínící předměty bez ní.
@@ -139,15 +144,44 @@ I přes problémy s AMD hardwarem se nakonec podařilo implementaci v compute i 
 Problémy byly v paddingu vstupních struktur i samotné implementaci algoritmu, kde se počítaly
 některé trojuhelníky navíc. 
 
-----Nejaka tabulka
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=12cm,keepaspectratio]{screenshot}
+	\caption{Screenshot aplikace}
+	\label{fig:screenshot}
+\end{figure}
 
-----Nejaky screenshot..
+Měření výkonu bylo prováděno na počítači s procesorem Intel i5 4670K a grafickou kartou AMD Radeon 280X. Měření byla provedena se všemi metodami ve dvou různých rozlišeních s následujícími modely:
+
+\begin{itemize}
+	\item plane - Jednoduchá rovina tvořená ze dvou trojúhelníků.
+	\item bunny - Běžný Stanford Bunny, 4968 trojúhelníků.
+	\item cubes - 512 krychlí, 6144 trojúhelníků.
+\end{itemize}
+
+Výsledky měření jsou v grafech \ref{fig:mereni-1024} a \ref{fig:mereni-1920}.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=12cm,keepaspectratio]{mereni-1024}
+	\caption{Výsledky měření při rozlišení $1024\times768$}
+	\label{fig:mereni-1024}
+\end{figure}
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=12cm,keepaspectratio]{mereni-1920}
+	\caption{Výsledky měření při rozlišení $1920\times1080$}
+	\label{fig:mereni-1920}
+\end{figure}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{Závěr}
 
 Výsledky jsou v mnoha případech dle očekávání -- korektně funguje stínování závislé na počtu stěn, kterými světlo prochází. Algoritmus z-fail taktéž funguje.
+
+Zajímavý je ovšem podstatně nižší výkon compute shaderů oproti geometry shaderům.
 
 \bibliographystyle{czechiso}
 \begin{flushleft}
