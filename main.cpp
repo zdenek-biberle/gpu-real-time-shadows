@@ -638,19 +638,24 @@ int wrapped_main(int argc, char** argv)
 						case SDLK_t: drawShadowVolume = !drawShadowVolume; break;
 						
 						case SDLK_c: 
-							method = Method::cpu;
-							std::cout << "Nyni se pouziva CPU" << std::endl;
-							break;
+
+							if (method == Method::cpu) {
+								method = Method::gpuCompute;
+								std::cout << "Nyni se pouziva GPU a compute shadery" << std::endl;
 							
-						case SDLK_v:
-							method = Method::gpuCompute;
-							std::cout << "Nyni se pouziva GPU a compute shadery" << std::endl;
-							break;
+							} else if (method == Method::gpuCompute) {
+								method = Method::gpuGeometry;
+								std::cout << "Nyni se pouziva GPU a geometry shadery" << std::endl;
+
+							} else if (method == Method::gpuGeometry) {
+					
+								method = Method::cpu;
+								std::cout << "Nyni se pouziva CPU" << std::endl;
+							}
+
 							
-						case SDLK_b:
-							method = Method::gpuGeometry;
-							std::cout << "Nyni se pouziva GPU a geometry shadery" << std::endl;
 							break;
+						
 							
 						case SDLK_F5: control->recompileAllPrograms(); break;
 
