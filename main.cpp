@@ -954,6 +954,11 @@ int wrapped_main(int argc, char** argv)
 
 						glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
 						
+						if (blend)
+						glUniform1f(glGetUniformLocation(program->id, "shadowCasterOpacity"), 0.25);
+						else
+						glUniform1f(glGetUniformLocation(program->id, "shadowCasterOpacity"), 1.0);
+
 						//draw scene with lighting
 						//reuse previously declared variables
 						mvLocation = glGetUniformLocation(program->id, "mvMat");
@@ -1022,6 +1027,8 @@ int wrapped_main(int argc, char** argv)
 							glEnable(GL_BLEND);
 							glBlendFunc(GL_SRC_ALPHA, GL_ONE);
 						}
+						
+
 						
 						glDrawElements(GL_TRIANGLES, (GLsizei) scene[1]->indexCount, GL_UNSIGNED_INT, reinterpret_cast<void*>(scene[1]->baseIndex * sizeof(GLuint)));
 						
