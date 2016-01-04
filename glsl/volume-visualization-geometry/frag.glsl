@@ -1,6 +1,6 @@
 #version 450
 
-in VertexOutput
+in GeometryOutput
 {
 	flat int multiplicity;
 } IN;
