@@ -13,6 +13,7 @@
 \usepackage{subfig}                % \subfloat
 \usepackage{color}
 \usepackage{url}
+\usepackage{float}
 \inputencoding{utf8}
 %\usepackage[bf]{caption2}
 \usepackage{hyperref}
@@ -39,7 +40,7 @@
 
 
 Tato práce se zabývá implementací algoritmu Real Time Shadow of Transparent Casters Using Shadow
-Volume, který jak již název naznačuje, popisuje způsob řešení stínů pomocí objemových těles, aplikovatelný i
+Volume popsaný v \cite{Byungmoon2007}. Tento algoritmus, jak již jeho název naznačuje, popisuje způsob řešení stínů pomocí objemových těles, aplikovatelný i
 na neuzavřené modely a tedy i obecné trojuhelníky - tzv. triangle soup. Dále algoritmus popisuje
 postup tvorby stínů průhledných casterů a jejich nedokonalosti a možná řešení.
 
@@ -47,46 +48,56 @@ postup tvorby stínů průhledných casterů a jejich nedokonalosti a možná ř
 
 \section{Teorie}
 
-Ideálně rovnice a literatura sem.
+Klíčovou částí algoritmu popsaného v \cite{Byungmoon2007} je zjištění intenzity světla po průchodu stínícím tělesem. Naivní způsob, kterým lze toto provést, je vytvoření stínového tělesa pro každý trojúhelník stínícího tělesa a následná aplikace typického shadow-volume algoritmu z-pass či z-fail.
 
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=10cm,keepaspectratio]{basic-shadow-volumes}
+	\caption{Základní myšlenka více stínových těles}
+	\label{fig:basic-shadow-volumes}
+\end{figure}
+
+Po této operaci získáme stencil buffer, jehož hodnoty pro každý pixel framebufferu určují počet ploch, skrz které prošel světelný paprsek.
+
+Pokud předpokládáme, že každá z těchto ploch propouští stejné množství světla, tak můžeme intenzitu světla dopadajícího na objekty následujícím způsobem:
 
 \begin{equation}
-  \label{moje-rovnice}
-  c = a + b
-\end{equation}
+	I_{out} = f^s * I_{in}
+\end{equation} 
 
-Na obrázku \ref{fig:obrazek} je ukázáno jak to funguje. Nějaké schéma sem?
+kde $I_{out}$ je celková intenzita světla, $I_{in}$ je intenzita zdroje světla, $f$ je faktor propustnosti stínícího objektu a $s$ je hodnota stencil bufferu na patřičné pozici. Tento postup lze jednoduše rozšířit na všechny barevné kanály.
 
-\begin{figure}[htb]
-  \centering
-  \includegraphics[width=5cm,keepaspectratio]{obrazek.jpg}
-  \caption{Nějaký ten diagram}
-  \label{fig:obrazek}
+Nevýhodou tohoto naivního přístupu je značné množství vykreslovaných stínových těles a mnoho operací se stencil bufferem. Omezení počtu stínových těles je možné provést na základě myšlenky je demonstrováno na obrázku \ref{fig:joining-shadow-volumes}. Obecně lze říci, že z hrany je nutné protáhnout stěnu stínového tělesa pouze v případě, že na obou stranách protažené hrany je stejný počet trojúhelníků, které tuto hranu sdílí. Pokud je tento počit odlišný, tak hranu protáhneme a přiřadíme jí tzv. multiplicitu, tedy rozdíl počtu trojúhelníků na obou stranách.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[width=10cm,keepaspectratio]{joining-shadow-volumes}
+	\caption{Ukázka nadbytečných stěn stínových těles}
+	\label{fig:joining-shadow-volumes}
 \end{figure}
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{Popis řešení}
 
 
-Bylo implementováno referenční CPU řešení, které bylo p?řeváděno do compute a geometry shaderů.
-Řešení se skládá prakticky ze dvou částí - spočítání objemových těles zvolenou metodou a potom
+Bylo implementováno referenční CPU řešení, které bylo převáděno do compute a geometry shaderů.
+Řešení se skládá prakticky ze dvou částí - spočítání objemových těles zvolenou metodou a poté
 samotný proces vygenerování stínů a vykreslení.
 
 Na začátku se předzpracují modely tak, že se odstraní duplikované vrcholy a vygenerují se nové
 vertex a element vektory. Pak se vygeneruje tzv. edgeLookup vektor, ve kterém se z trojuhelníků 
 vytvoří seřazená množina hran s třetím nehranovým vrcholem a id trojuhelníku. Hrany jsou seřazeny
- podle vrcholu 1, pak vrcholu 2 a nakonec podle id trojuhelníku. Toto seřazení umožňuje aby každou 
-sdílenou hranu pak zpracovával jen jeden trojuhelník (ten s nejnižším id).
+ podle vrcholu 1, pak vrcholu 2 a nakonec podle id trojuhelníku. Takto seřazený vektor umožňuje vyhledání všech trojúhelníků náležících k dané hraně v logaritmickém čase.
 
 Implementace algoritmu se v jednotlivých implementacích příliš neliší. Ve všech případech jsou na
-vstupu vrcholy modelu, element vektor definující jednotlivé trojuhelníky, edgeLookup, pozice světla a 
-požadovaná délka extrudovaného stínu. V compute a geometry shaderech jsou tyto data v SSBO strukturách
+vstupu vrcholy modelu, element vektor definující jednotlivé trojühelníky, edgeLookup, pozice světla a 
+požadovaná délka extrudovaného stínu. V compute a geometry shaderech jsou tyto data v SSBO bufferech
 (kromě pozice světla a délky stínu - ty jsou obyčejné uniformy).
  
-Pro každý trojuhelník, pokud je přivrácený ke světlu, se vygeneruje nový extrudovaný o příslušnou vzdálenost
-od světla. Pro každou jeho hranu se nalezne trojuhelník s nejnižším indexem, který ji obsahuje, a podle
-jeho orientace se nastaví multiplicita hrany (tj. zda stín generuje či nikoliv).
+Pro každý trojühelník, pokud je přivrácený ke světlu, se vygeneruje nový extrudovaný o příslušnou vzdálenost
+od světla. Pro každou jeho hranu se naleznou všechny trojühelníky, které tuto hranu sdílí, a podle jejich orientace se nastaví multiplicita hrany (tj. zda stín generuje či nikoliv).
 Pokud je výsledná multiplicita nenulová, vytvoří se z příslušné hrany stěna objemového tělesa.
 
 
@@ -135,10 +146,6 @@ některé trojuhelníky navíc.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{Závěr}
-
-Stručně napsáno jak to funguje.
-
---znova psat jak to funguje?? - ne, napsat, že to jede dobře a že jsme super apod.
 
 Výsledky jsou v mnoha případech dle očekávání -- korektně funguje stínování závislé na počtu stěn, kterými světlo prochází. Algoritmus z-fail taktéž funguje.
 
