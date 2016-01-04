@@ -1,4 +1,4 @@
-﻿%--------------------------------------------------------------------------------
+%--------------------------------------------------------------------------------
 %\documentclass{article}
 
 \documentclass[a4paper, 12pt]{article}
@@ -47,8 +47,7 @@ postup tvorby stínů průhledných casterů a jejich nedokonalosti a možná ř
 
 \section{Teorie}
 
-Tady v tÃ© kapitole je napsanÃ© jak to funguje. IdeÃ¡lnÄ› nÄ›jaka ta rovnice, napÅ™. \ref{moje-rovnice}. Potom by
-tady mÄ›la byt uvedena literatura, ze kterÃ© bylo Äerpano, napÅ™Ã­klad "Metody sledovÃ¡nÃ­ paprsku jsou popsanÃ© v \cite{Byungmoon2007}"
+Ideálně rovnice a literatura sem.
 
 
 \begin{equation}
@@ -56,24 +55,18 @@ tady mÄ›la byt uvedena literatura, ze kterÃ© bylo Äerpano, napÅ™Ã­k
   c = a + b
 \end{equation}
 
-Na obrÃ¡zku \ref{fig:obrazek} je ukÃ¡zanÃ© jak to funguje. NÄ›jakÃ© schÃ©mÃ¡tko pipeline..
+Na obrázku \ref{fig:obrazek} je ukázáno jak to funguje. Nějaké schéma sem?
 
 \begin{figure}[htb]
   \centering
   \includegraphics[width=5cm,keepaspectratio]{obrazek.jpg}
-  \caption{NÄ›jakÃ½ ten diagram, tÅ™eba pÅ™evzanÃ½ }
+  \caption{Nějaký ten diagram}
   \label{fig:obrazek}
 \end{figure}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section{Popis řešení­}
-
-Tady struÄnÄ› popiÅ¡te, jakÃ½m zpÅ¯sobem jste prakticky projekt Å™eÅ¡ili. UveÄte zejmÃ©na pouÅ¾itÃ©
-technologie a algoritmy. ZamÄ›Å™te se hlavnÄ› na zajÃ­mavÃ© a dÅ¯leÅ¾itÃ© ÄÃ¡sti implementace a takÃ© na
-problÃ©my, kterÃ© jste Å™eÅ¡ili. NenÃ­ nutnÃ© popisovat kaÅ¾dou tÅ™Ã­du.
-
-NapÅ™. uveÄte, jak jste matematickÃ½ popis z pÅ™edchozÃ­ kapitoly implementovali prakticky.
+\section{Popis řešení}
 
 
 Bylo implementováno referenční CPU řešení, které bylo p?řeváděno do compute a geometry shaderů.
@@ -92,47 +85,46 @@ požadovaná délka extrudovaného stínu. V compute a geometry shaderech jsou t
 (kromě pozice světla a délky stínu - ty jsou obyčejné uniformy).
  
 Pro každý trojuhelník, pokud je přivrácený ke světlu, se vygeneruje nový extrudovaný o příslušnou vzdálenost
-od světla. Pro každou jeho hranu se nalezne trojuhelník s nejnižším indexem, který ji obsahuje a podle
-jeho orientace se nastaví multiplicita hrany (tj zda stín generuje či nikoliv).
+od světla. Pro každou jeho hranu se nalezne trojuhelník s nejnižším indexem, který ji obsahuje, a podle
+jeho orientace se nastaví multiplicita hrany (tj. zda stín generuje či nikoliv).
 Pokud je výsledná multiplicita nenulová, vytvoří se z příslušné hrany stěna objemového tělesa.
 
 
 
 Postup kreslení začíná vykreslením stíněných povrchů do hloubkového bufferu, který je použitý při 
 z-fail generování "stencil" textury stínů. Při z-fail algoritmu je zápis do hloubkového bufferu vypnutý
-a pro každý fragment, který má hloubku větší než je aktuální v hloubkovém bufferu atomicky zapíše negativní
+a pro každý fragment, který má hloubku větší než je aktuální v hloubkovém bufferu, atomicky zapíše negativní
 hodnotu své multiplicity (pro fragmenty orientované od kamery je tato hodnota ve výsledku kladná a pro
-fragmenty orientované ke kameře záporná), do celočíselné "stencil" textury. Je také zapnutý early fragment test,
-jinak by atomické operace prob?hly i pro fragmenty, které se budou zahazovat.
+fragmenty orientované ke kameře záporná) do celočíselné "stencil" textury. Je také zapnutý early fragment test,
+jinak by atomické operace proběhly i pro fragmenty, které se budou zahazovat.
 
-Se získanou texturou se stínem už stačí vykreslit znova stíněné předměty a pak stínící předměty bez ní.
+Se získanou texturou se stínem už stačí vykreslit znovu stíněné předměty a poté stínící předměty bez ní.
 
-Zajímavé řešené problémy:
+\subsection{Zajímavé řešené problémy}
 Pro atomické load/store operace jsou podporovány pouze celočíselné formáty textur r32i a r32ui.
 AMD má opravdu problém s přímým využitím hodnot ze SSBO pole, ale zkopírování do pomocné proměnné tento problém obejde.
 Padding vstupních dat je opravdu potřeba. Dlouho nás ani nenapadlo tam hledat chybu a vůbec se tím zabývat. 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section{Ovládání­}
+\section{Ovládání}
 
-T - zapne vykreslování objemových těles
-C - přepíná mezi metodami generování objemových těles
-I - zapne zobrazení statistik běhu programu
-R - zastaví rotaci scény
-Myš - rotace okolo počátku scény
-Kolečko - přiblížení/oddálení pohledu ve scén?
-Esc - ukončí běh openGL programu, Enter potom celé aplikace
+\begin{itemize}
+	\item T - zapne vykreslování objemových těles
+	\item C - přepíná mezi metodami generování objemových těles
+	\item I - zapne zobrazení statistik běhu programu
+	\item R - zastaví rotaci scény
+	\item B - přepnutí stínícího modelu
+	\item Myš - rotace okolo počátku scény
+	\item Kolečko - přiblížení/oddálení pohledu ve scén?
+	\item Esc - ukončí běh openGL programu, Enter potom celé aplikace
+\end{itemize}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section{Vyhodnocení­}
+\section{Vyhodnocení}
 
-Tady by mÄ›lo bÃ½t napsanÃ© jak to funguje. ProtoÅ¾e se jednÃ¡ o poÄÃ­taÄovou grafiku nebo 
-vidÄ›nÃ­, tak by tady mÄ›l byt screenshot, ze ktereho bude poznat jak to funguje.
-K tomu by mÄ›la bÃ½t idealnÄ› tabulka s vyhodnocenÃ­m jak pÅ™esnÄ›/rychle to funguje. 
-
-I přes problémy s AMD hardwarem se nakonec podařilo implementaci v compute shaderech zprovoznit.
+I přes problémy s AMD hardwarem se nakonec podařilo implementaci v compute i geometry shaderech zprovoznit.
 Problémy byly v paddingu vstupních struktur i samotné implementaci algoritmu, kde se počítaly
 některé trojuhelníky navíc. 
 
@@ -144,10 +136,11 @@ některé trojuhelníky navíc.
 
 \section{Závěr}
 
-Tady by mÄ›lo bÃ½t struÄnÄ› napsanÃ© jak to funguje.
+Stručně napsáno jak to funguje.
 
---znova psat jak to funguje?? 
-Funguje to dle o?ekávání. Pom?rn? dob?e. Nebyl ?as.
+--znova psat jak to funguje?? - ne, napsat, že to jede dobře a že jsme super apod.
+
+Výsledky jsou v mnoha případech dle očekávání -- korektně funguje stínování závislé na počtu stěn, kterými světlo prochází. Algoritmus z-fail taktéž funguje.
 
 \bibliographystyle{alpha}
 \begin{flushleft}
