@@ -72,7 +72,7 @@ void emitTriangle(uint idx, vec3 a, vec3 b, vec3 c, int multiplicity)
 	gl_Position = pMat * mvMat * vec4(b, 1.0);
 	OUT.multiplicity = multiplicity;
 	EmitVertex();
-	gl_Position = pMat * mvMat * vec4(b, 1.0);
+	gl_Position = pMat * mvMat * vec4(c, 1.0);
 	OUT.multiplicity = multiplicity;
 	EmitVertex();
 	EndPrimitive();

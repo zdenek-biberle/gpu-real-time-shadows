@@ -152,6 +152,7 @@ int wrapped_main(int argc, char** argv)
 	control->addProgram("volumeComputation");
 	control->addProgram("volumeComputationGeometry");
 	control->addProgram("volumeVisualization");
+	control->addProgram("volumeVisualizationGeometry");
 	control->addProgram("font");
 	control->addProgram("caster");
 
@@ -253,6 +254,20 @@ int wrapped_main(int argc, char** argv)
 		}
 	}
 
+	{
+		auto volumeVisualizationGeometryProgram = control->getProgram("volumeVisualizationGeometry");
+		
+		volumeVisualizationGeometryProgram->addShader(GL_VERTEX_SHADER, "./glsl/volume-computation-geometry/vert.glsl");
+		volumeVisualizationGeometryProgram->addShader(GL_GEOMETRY_SHADER, "./glsl/volume-computation-common/common.glsl");
+		volumeVisualizationGeometryProgram->addShader(GL_GEOMETRY_SHADER, "./glsl/volume-computation-geometry/geometry.glsl");
+		volumeVisualizationGeometryProgram->addShader(GL_FRAGMENT_SHADER, "./glsl/volume-visualization-geometry/frag.glsl");
+		
+		if (!volumeVisualizationGeometryProgram->linkProgram()) {
+			std::cin.ignore();
+			exit(1);
+		}
+	}
+	
 	//create font sampler
 	Sampler *sampler = control->addSampler("font");
 
@@ -403,6 +418,24 @@ int wrapped_main(int argc, char** argv)
 
 
 		glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+	glBindVertexArray(0);
+	
+	//set up vao for shadow volume display - from gpu, via geometry shaders
+	GLuint shadowVolumeVAO_CPU_geometry;
+	glGenVertexArrays(1, &shadowVolumeVAO_CPU_geometry);
+	glBindVertexArray(shadowVolumeVAO_CPU_geometry);
+
+		glBindBuffer(GL_ARRAY_BUFFER, simpleVbo);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, simpleIbo);
+
+		glEnableVertexAttribArray(0);
+
+		// pozice
+		glVertexAttribPointer(0u, 3, GL_FLOAT, GL_FALSE, (GLsizei) sizeof(SimpleVertex), reinterpret_cast<void*>(offsetof(SimpleVertex, _x)));
+
+		glBindBuffer(GL_ARRAY_BUFFER, 0);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
 	glBindVertexArray(0);
 
@@ -880,7 +913,6 @@ int wrapped_main(int argc, char** argv)
 					auto indexCountLocation = glGetUniformLocation(program->id, "indexCount");
 					glUniform1ui(indexCountLocation, simplifiedModel.indexCount);
 					
-					std::cout << "simple model: " << simplifiedModel.indexCount << ", " << simplifiedModel.baseIndex << std::endl;
 					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, simpleIbo);
 					glDrawElements(GL_TRIANGLES, (GLsizei) simplifiedModel.indexCount, GL_UNSIGNED_INT, reinterpret_cast<void*>(simplifiedModel.baseIndex * sizeof(GLuint)));
 					glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
@@ -1008,40 +1040,80 @@ int wrapped_main(int argc, char** argv)
 			 * Vizualizace shadow volume.
 			 */
 
-			if (control->getProgram("volumeVisualization")->id != 0 && drawShadowVolume && (method == Method::cpu || method == Method::gpuCompute))
+			if (control->getProgram("volumeVisualization")->id != 0 && drawShadowVolume)
 			{
-				ShaderProgram *program = control->getProgram("volumeVisualization");
+				glEnable(GL_BLEND);
+				glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+				glDepthMask(GL_FALSE);
+			
+				switch(method)
+				{
+					case Method::cpu:
+					case Method::gpuCompute:
+					{
+						ShaderProgram *program = control->getProgram("volumeVisualization");
 
-				program->useProgram();
+						program->useProgram();
 
-				if (method == Method::cpu){
-					glBindVertexArray(shadowVolumeVAO_CPU);
-				}
-				else{
-					glBindVertexArray(shadowVolumeVAO);
+						if (method == Method::cpu){
+							glBindVertexArray(shadowVolumeVAO_CPU);
+						}
+						else{
+							glBindVertexArray(shadowVolumeVAO);
+						}
+						
+						auto mvLocation = glGetUniformLocation(program->id, "mvMat");
+						auto mvNormLocation = glGetUniformLocation(program->id, "mvNormMat");
+						auto pLocation = glGetUniformLocation(program->id, "pMat");
+						
+						auto mvMat = view * shadowModel.transform;
+						auto mvNormMat = glm::transpose(glm::inverse(glm::mat3(mvMat)));
+						
+						glUniformMatrix4fv(mvLocation, 1, GL_FALSE, glm::value_ptr(mvMat));
+						glUniformMatrix3fv(mvNormLocation, 1, GL_FALSE, glm::value_ptr(mvNormMat));
+						glUniformMatrix4fv(pLocation, 1, GL_FALSE, glm::value_ptr(pMat));
+						
+						glDrawArrays(GL_TRIANGLES, 0, shadowVolumeInfo.triCount * 3);
+						
+						break;
+					}
+					
+					case Method::gpuGeometry:
+					{
+						ShaderProgram *program = control->getProgram("volumeVisualizationGeometry");
+						program->useProgram();
+						glBindVertexArray(shadowVolumeVAO_CPU_geometry);
+						
+						glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, simpleVbo);
+						glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, simpleIbo);
+						glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, edgeLookupBuffer);
+						
+						auto mvLocation = glGetUniformLocation(program->id, "mvMat");
+						auto pLocation = glGetUniformLocation(program->id, "pMat");
+
+						auto mvMat = view * scene[1]->transform;
+						auto mvNormMat = glm::transpose(glm::inverse(glm::mat3(mvMat)));
+						glUniformMatrix4fv(mvLocation, 1, GL_FALSE, glm::value_ptr(mvMat));
+						glUniformMatrix4fv(pLocation, 1, GL_FALSE, glm::value_ptr(pMat));
+						
+						auto lightPosLocation = glGetUniformLocation(program->id, "lightPos");
+						glUniform3fv(lightPosLocation, 1, glm::value_ptr(lightPosition));
+						
+						auto indexCountLocation = glGetUniformLocation(program->id, "indexCount");
+						glUniform1ui(indexCountLocation, simplifiedModel.indexCount);
+						
+						glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, simpleIbo);
+						glDrawElements(GL_TRIANGLES, (GLsizei) simplifiedModel.indexCount, GL_UNSIGNED_INT, reinterpret_cast<void*>(simplifiedModel.baseIndex * sizeof(GLuint)));
+						glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+						
+						break;
+					}
 				}
 				
-					glEnable(GL_BLEND);
-					glBlendFunc(GL_SRC_ALPHA, GL_ONE);
-					glDepthMask(GL_FALSE);
-					
-					auto mvLocation = glGetUniformLocation(program->id, "mvMat");
-					auto mvNormLocation = glGetUniformLocation(program->id, "mvNormMat");
-					auto pLocation = glGetUniformLocation(program->id, "pMat");
-					
-					auto mvMat = view * shadowModel.transform;
-					auto mvNormMat = glm::transpose(glm::inverse(glm::mat3(mvMat)));
-					
-					glUniformMatrix4fv(mvLocation, 1, GL_FALSE, glm::value_ptr(mvMat));
-					glUniformMatrix3fv(mvNormLocation, 1, GL_FALSE, glm::value_ptr(mvNormMat));
-					glUniformMatrix4fv(pLocation, 1, GL_FALSE, glm::value_ptr(pMat));
-					
-					glDrawArrays(GL_TRIANGLES, 0, shadowVolumeInfo.triCount * 3);
-
 				glBindVertexArray(0);
 				glUseProgram(0);
-				
 				glDepthMask(GL_TRUE);
+				glDisable(GL_BLEND);
 			}
 		
 			
