@@ -1,7 +1,7 @@
 #version 450
 
 layout(triangles) in;
-layout(triangle_strip, max_vertices = 3 * 10) out; // 3 * 8 -> maximalne osm trianglu
+layout(triangle_strip, max_vertices = 3 * 8) out; // 3 * 8 -> maximalne osm trianglu
 
 struct InVertex
 {

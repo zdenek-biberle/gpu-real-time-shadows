@@ -3,6 +3,7 @@
 #include <cassert>
 #include <stdexcept>
 #include <sstream>
+#include <map>
 
 #include <glm/glm.hpp>
 
@@ -35,7 +36,7 @@ ModelInfo loadModel(const std::string& filename, std::vector<Vertex>& outVertice
 	std::cout << "\rLoading model: " << filename << std::endl;
 
 	ModelInfo info;
-	info.baseIndex = outVertices.size();
+	info.baseIndex = outIndices.size();
 	info.indexCount = 0;
 
 	int old_index_count = outIndices.size();
@@ -108,11 +109,12 @@ ModelInfo loadModel(const std::string& filename, std::vector<Vertex>& outVertice
 				if (tmp == "")  //! sure if neccesssary
 					break;
 
+				std::cout << tmp << " ";
 				tmp_vector.push_back(tmp);	//just save the line for future use in untangle..
 			}
 
 			faces.push_back(tmp_vector);   //should be only 3 in this case
-
+			std::cout << std::endl;
 		}
 		else if (mark.compare("vn") == 0){
 
@@ -184,21 +186,11 @@ ModelInfo loadModel(const std::string& filename, std::vector<Vertex>& outVertice
 
 
 	}
-
-
-
 		//appends new vertex / normal pairs as needed, fills out indices and vertices
 		untangle(vertices, normals, faces, outVertices, outIndices);
-
-	
-
-		cout << outIndices.size() / 3 << " triangles.\n";
-
-		
 		info.indexCount = outIndices.size() - old_index_count;
-	
-
-	cout << filename << " loaded. \n";
+		std::cout << "Read " << vertices.size() << " vertices, " << normals.size() << " normals, " << faces.size() << " faces and constructed " << info.indexCount / 3 << " triangles with baseIndex " << info.baseIndex << "." << std::endl;
+		std::cout << filename << " loaded, we now have " << outVertices.size() << " vertices and " << outIndices.size() << " indices in total" << std::endl;
 
 	return info; 
 }
@@ -226,45 +218,49 @@ void untangle(std::vector<glm::vec3> &vertices, std::vector<glm::vec3> &normals,
 	now it should be ok.. can draw with this..
 	*/
 
+	// map (vertex idx, normal idx) to output vertex idx
+	std::map<std::tuple<unsigned, unsigned>, unsigned> vertex_map;
 
 	for (auto const face : faces){
 
-
+		if (face.size() != 3) throw std::runtime_error("Invalid face item count");
+	
 		for (auto const item : face){     // 3 - n items of format x/y/z
 
 			std::istringstream ss(item);
 			std::string token;
 			glm::vec3 indices;
 
-			std::vector<int> tmp;	//v/t/n		3
-			//v/n		2
+			std::vector<std::string> tmp;	
+			//v/t/n		3
+			//v/n		2 <- invalid
 			//v/t		2
 			//v			1
 			//v//n		3
-
+			
 			while (std::getline(ss, token, '/')) {
-				if (token != "")
-					tmp.push_back(std::stoi(token) - 1);	//in the file it starts from 1
-
+				tmp.push_back(token);
 			}
 
-
-			int vertex_index;
-			int tex_index;
-			int normal_index;
-
-
-			vertex_index = tmp[0];
-			tex_index = tmp[1];
-			normal_index = tmp[2];
-
-			//create new vertex with its attributes on common index
-			Vertex vertex(vertices[vertex_index], normals[normal_index], glm::vec2());
-
-			outVertices.push_back(vertex); //save it
-			outIndices.push_back(outVertices.size() - 1);	//note its index
-
-
+			if (tmp.size() < 3 || tmp[0] == "" || tmp[2] == "") throw std::runtime_error("Model missing vertex indices or normal indices");
+			
+			unsigned vertex_index = std::stoul(tmp[0]) - 1;
+			unsigned normal_index = std::stoul(tmp[2]) - 1;
+			
+			auto vertex_tuple = std::make_tuple(vertex_index, normal_index);
+			auto found_vertex = vertex_map.find(vertex_tuple);
+			if (found_vertex == vertex_map.end())
+			{
+				unsigned idx = outVertices.size();
+				vertex_map.insert(std::make_pair(vertex_tuple, idx));
+				outVertices.push_back(Vertex(vertices[vertex_index], normals[normal_index], glm::vec2()));
+				outIndices.push_back(idx);
+			}
+			else
+			{
+				outIndices.push_back(found_vertex->second);
+			}
 		}
+		std::cout << std::endl;
 	}
 }
