@@ -561,6 +561,7 @@ int wrapped_main(int argc, char** argv)
 	
 	bool drawShadowVolume = false;
 	Method method = Method::cpu;
+	bool blend = false;
 	
 	auto ticks = SDL_GetTicks();
 	auto ticksDelta = 0;
@@ -661,6 +662,8 @@ int wrapped_main(int argc, char** argv)
 
 						case SDLK_i: control->stats = !control->stats; break;
 
+						case SDLK_b: blend = !blend; break; 
+						
 						case SDLK_ESCAPE: run = false;
 					}
 					break;
@@ -828,9 +831,9 @@ int wrapped_main(int argc, char** argv)
 			auto pLocation = glGetUniformLocation(program->id, "pMat");
 			
 			
-			for (auto model : scene)
+			//for (auto model : scene)
 			{
-				//auto& model = scene[0];
+				auto& model = scene[0];
 				auto mvMat = view * model->transform;
 				auto mvNormMat = glm::transpose(glm::inverse(glm::mat3(mvMat)));
 				glUniformMatrix4fv(mvLocation, 1, GL_FALSE, glm::value_ptr(mvMat));
@@ -1013,7 +1016,19 @@ int wrapped_main(int argc, char** argv)
 						glUniform3fv(lightDirLocation, 1, glm::value_ptr(transformedLightDirection));
 						glUniform3fv(colorLocation, 1, glm::value_ptr(scene[1]->color));
 
+						if (blend)
+						{
+							glDisable(GL_DEPTH_TEST);
+							glEnable(GL_BLEND);
+							glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+						}
+						
 						glDrawElements(GL_TRIANGLES, (GLsizei) scene[1]->indexCount, GL_UNSIGNED_INT, reinterpret_cast<void*>(scene[1]->baseIndex * sizeof(GLuint)));
+						
+						if (blend)
+						{
+							glDisable(GL_BLEND);
+						}
 						
 						glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 			
