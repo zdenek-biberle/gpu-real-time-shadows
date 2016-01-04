@@ -4,7 +4,7 @@ layout (local_size_x = 128) in;
 
 uniform uint indexCount;
 uniform uint indexOffset;
-uniform float extrusionDistance = 100.0;
+uniform float extrusionDistance = 50000.0;
 uniform vec3 lightDir;
 
 struct InVertex

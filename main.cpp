@@ -63,7 +63,7 @@ int wrapped_main(int argc, char** argv)
 	vec3 lightDirection = glm::normalize(vec3(-1, -1, -0.25)); //smerova svetla pro jednoduchost
 	SDL_Init(SDL_INIT_VIDEO);
 
-	float duration = 10.0;
+	float duration = -1;
 	float dist = -4.0f;
 	Method method = Method::cpu;
 	bool blend = false;
@@ -700,7 +700,7 @@ int wrapped_main(int argc, char** argv)
 		}
 		
 		time_item now = time_item();
-		if (duration < now.seconds(start))
+		if (duration > 0 && duration < now.seconds(start))
 			run = false;
 
 		glQueryCounter(timestampQuery->query(), GL_TIMESTAMP);
@@ -762,7 +762,7 @@ int wrapped_main(int argc, char** argv)
 						simplifiedModel.baseIndex,
 						simplifiedModel.indexCount,
 						lightDirection,
-						80.0f,
+						50000.0f,
 						simplifiedVertices,
 						simplifiedIndices,
 						edgeLookup,

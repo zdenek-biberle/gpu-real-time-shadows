@@ -38,7 +38,7 @@ uniform mat4 pMat;
 uniform mat4 mvMat;
 
 uniform uint indexCount;
-uniform float extrusionDistance = 100.0;
+uniform float extrusionDistance = 50000.0;
 uniform vec3 lightDir;
 
 in VertexOutput
