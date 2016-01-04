@@ -47,6 +47,10 @@ enum class Method
 	cpu, gpuCompute, gpuGeometry
 };
 
+//1     2      3     4      5     6      7		  8
+//scene caster blend method resolution   duration distance
+//*.obj *.obj  0/1   0-2    width height seconds  units
+
 int wrapped_main(int argc, char** argv)
 {
 	if (argc < 3)
@@ -59,8 +63,30 @@ int wrapped_main(int argc, char** argv)
 	vec3 lightDirection = glm::normalize(vec3(-1, -1, -0.25)); //smerova svetla pro jednoduchost
 	SDL_Init(SDL_INIT_VIDEO);
 
+	float duration = 10.0;
+	float dist = -4.0f;
+	Method method = Method::cpu;
+	bool blend = false;
 	int windowWidth = 1024;
 	int windowHeight = 768;
+
+	if (argc == 9) {
+		duration = atof(argv[7]);
+		dist = -atof(argv[8]);
+		
+		blend = atoi(argv[3]);
+		windowWidth = atoi(argv[5]);
+		windowHeight = atoi(argv[6]);
+	
+		switch (atoi(argv[4])) {
+			case 0: method = Method::cpu; break;
+			case 1: method = Method::gpuCompute; break;
+			case 2: method = Method::gpuGeometry; break;
+			default: method = Method::cpu; break;
+
+		}
+		
+	}
 
 	auto window = SDL_CreateWindow(
 		"GPU real time shadows",
@@ -555,13 +581,12 @@ int wrapped_main(int argc, char** argv)
 	float modelRoty = 0.0f;
 	float roty = 0.0f;
 	float rotx = 1.0f;
-	float dist = -4.0f;
-	
+
+
 	bool rotate = true;
 	
 	bool drawShadowVolume = false;
-	Method method = Method::cpu;
-	bool blend = false;
+
 	
 	auto ticks = SDL_GetTicks();
 	auto ticksDelta = 0;
@@ -570,7 +595,8 @@ int wrapped_main(int argc, char** argv)
 	unsigned lastDisplayedFrameCounter = 0;
 	unsigned frameTickCounter = 0;
 	unsigned frameComputationTickCounter = 0;
-	
+	time_item start = time_item();
+
 	ShadowVolumeComputationInfo shadowVolumeInfo;
 	
 	
@@ -673,6 +699,10 @@ int wrapped_main(int argc, char** argv)
 			 }
 		}
 		
+		time_item now = time_item();
+		if (duration < now.seconds(start))
+			run = false;
+
 		glQueryCounter(timestampQuery->query(), GL_TIMESTAMP);
 
 		// Cas a pocitadla snimku a podobne veci //
@@ -700,6 +730,8 @@ int wrapped_main(int argc, char** argv)
 			lightDirection = glm::normalize(vec3(std::sin(ticks * 0.001), -1, -std::cos(ticks * 0.001)));
 		}
 		
+
+
 		try
 		{
 			auto translate = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, dist));
@@ -954,6 +986,11 @@ int wrapped_main(int argc, char** argv)
 
 						glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
 						
+						if (blend)
+						glUniform1f(glGetUniformLocation(program->id, "shadowCasterOpacity"), 0.25);
+						else
+						glUniform1f(glGetUniformLocation(program->id, "shadowCasterOpacity"), 1.0);
+
 						//draw scene with lighting
 						//reuse previously declared variables
 						mvLocation = glGetUniformLocation(program->id, "mvMat");
@@ -1022,6 +1059,8 @@ int wrapped_main(int argc, char** argv)
 							glEnable(GL_BLEND);
 							glBlendFunc(GL_SRC_ALPHA, GL_ONE);
 						}
+						
+
 						
 						glDrawElements(GL_TRIANGLES, (GLsizei) scene[1]->indexCount, GL_UNSIGNED_INT, reinterpret_cast<void*>(scene[1]->baseIndex * sizeof(GLuint)));
 						
