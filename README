@@ -1,0 +1,33 @@
+# Kompilace
+
+Kompilace programu byla testována v prostředí Visual Studio 2013 a pod kompilátorem gcc 5.3.0 v prostředí GNU/Linux i MSYS2. Pro kompilaci je k dispozici Makefile.
+
+Všechny zdrojové soubory, Makefile a soubory nutné pro běh jsou ve složce `aplikace`.
+
+Aplikace využívá následující knihovny:
+
+* glm
+* sdl2
+* glew
+* freetype2
+* glimg
+
+# Spouštění
+
+Projekt je nutné spustit minimálně s dvěma parametry:
+
+* cesta k modelu se scénou
+* cesta ke stínícímu modelu
+
+Typické spuštění tedy vypadá např. takto:
+
+    ./gpu-real-time-shadows models/plane2.obj models/cubes.obj
+
+Program celkově přijímá až osm parametrů:
+
+1     2      3     4      5     6      7        8
+scene caster blend method resolution   duration distance
+*.obj *.obj  0/1   0-2    width height seconds  units
+
+Parametry 1 a 2 jsou povinné. Parametry 3-8 lze vynechat všechny nebo žádný z nich. Tyto parametry byly určeny primárně pro měření.
+
