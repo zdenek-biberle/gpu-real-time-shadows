@@ -1,4 +1,4 @@
-%--------------------------------------------------------------------------------
+﻿%--------------------------------------------------------------------------------
 %\documentclass{article}
 
 \documentclass[a4paper, 12pt]{article}
@@ -23,7 +23,7 @@
 
 
 \title{Dokumentace projektu}
-\author{V�t Hodes <xhodes00@stud.fit.vutbr.cz>}
+\author{Vít Hodes <xhodes00@stud.fit.vutbr.cz>}
 \author{Zden?k Biberle <xbiber00@stud.fit.vutbr.cz>}
 \date{\today}
 
@@ -38,17 +38,17 @@
 \section{Úvod}
 
 
-Tato pr�ce se zab�v� implementac� algoritmu Real Time Shadow of Transparent Casters Using Shadow
-Volume, kter� jak ji� n�zev nazna?uje, popisuje zp?sob ?e�en� st�n? pomoc� objemov�ch t?les, aplikovateln� i
-na neuzav?en� modely a tedy i obecn� trojuheln�ky - tzv. triangle soup. D�le algoritmus popisuje
-postup tvorby pr?hledn�ch st�n? a jejich probl�my a mo�n� ?e�en�.
+Tato práce se zabývá implementací algoritmu Real Time Shadow of Transparent Casters Using Shadow
+Volume, který jak již název naznačuje, popisuje způsob řešení stínů pomocí objemových těles, aplikovatelný i
+na neuzavřené modely a tedy i obecné trojuhelníky - tzv. triangle soup. Dále algoritmus popisuje
+postup tvorby průhledných stínů a jejich problémy a možné řešení.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \section{Teorie}
 
-Tady v té kapitole je napsané jak to funguje. Ideálně nějaka ta rovnice, např. \ref{moje-rovnice}. Potom by
-tady měla byt uvedena literatura, ze které bylo čerpano, například "Metody sledování paprsku jsou popsané v \cite{Byungmoon2007}"
+Tady v tÃ© kapitole je napsanÃ© jak to funguje. IdeÃ¡lnÄ› nÄ›jaka ta rovnice, napÅ™. \ref{moje-rovnice}. Potom by
+tady mÄ›la byt uvedena literatura, ze kterÃ© bylo Äerpano, napÅ™Ã­klad "Metody sledovÃ¡nÃ­ paprsku jsou popsanÃ© v \cite{Byungmoon2007}"
 
 
 \begin{equation}
@@ -56,85 +56,85 @@ tady měla byt uvedena literatura, ze které bylo čerpano, například "Metody 
   c = a + b
 \end{equation}
 
-Na obrázku \ref{fig:obrazek} je ukázané jak to funguje. Nějaké schémátko pipeline..
+Na obrÃ¡zku \ref{fig:obrazek} je ukÃ¡zanÃ© jak to funguje. NÄ›jakÃ© schÃ©mÃ¡tko pipeline..
 
 \begin{figure}[htb]
   \centering
   \includegraphics[width=5cm,keepaspectratio]{obrazek.jpg}
-  \caption{Nějaký ten diagram, třeba převzaný }
+  \caption{NÄ›jakÃ½ ten diagram, tÅ™eba pÅ™evzanÃ½ }
   \label{fig:obrazek}
 \end{figure}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section{Popis řešení}
+\section{Popis ?ešení­}
 
-Tady stručně popište, jakým způsobem jste prakticky projekt řešili. Uveďte zejména použité
-technologie a algoritmy. Zaměřte se hlavně na zajímavé a důležité části implementace a také na
-problémy, které jste řešili. Není nutné popisovat každou třídu.
+Tady struÄnÄ› popiÅ¡te, jakÃ½m zpÅ¯sobem jste prakticky projekt Å™eÅ¡ili. UveÄte zejmÃ©na pouÅ¾itÃ©
+technologie a algoritmy. ZamÄ›Å™te se hlavnÄ› na zajÃ­mavÃ© a dÅ¯leÅ¾itÃ© ÄÃ¡sti implementace a takÃ© na
+problÃ©my, kterÃ© jste Å™eÅ¡ili. NenÃ­ nutnÃ© popisovat kaÅ¾dou tÅ™Ã­du.
 
-Např. uveďte, jak jste matematický popis z předchozí kapitoly implementovali prakticky.
+NapÅ™. uveÄte, jak jste matematickÃ½ popis z pÅ™edchozÃ­ kapitoly implementovali prakticky.
 
 
-Bylo implementov�no referen?n� CPU ?e�en�, kter� bylo p?ev�d?no do compute a geometry shader?.
-?e�en� se skl�d� prakticky ze dvou ?�st� - spo?�t�n� objemov�ch t?les zvolenou metodou a potom
-samotn� proces vygenerov�n� st�n? a vykreslen�.
+Bylo implementováno referenční CPU řešení, které bylo p?řeváděno do compute a geometry shaderů.
+Řešení se skládá prakticky ze dvou částí - spočítání objemových těles zvolenou metodou a potom
+samotný proces vygenerování stínů a vykreslení.
 
-Na za?�tku se p?edzpracuj� modely tak, �e se odstran� duplikovan� vrcholy a vygeneruj� se nov�
-vertex a element vektory. Pak se vygeneruje tzv. edgeLookup vektor, ve kter�m se z trojuheln�k? 
-vytvo?� se?azen� mno�ina hran s t?et�m nehranov�m vrcholem a id trojuheln�ku. Hrany jsou se?azeny
- podle vrcholu 1, pak vrcholu 2 a nakonec podle id trojuheln�ku. Toto se?azen� umo�?uje aby ka�dou 
-sd�lenou hranu pak zpracov�val jen jeden trojuheln�k (ten s nejni���m id).
+Na začátku se předzpracují modely tak, že se odstraní duplikované vrcholy a vygenerují se nové
+vertex a element vektory. Pak se vygeneruje tzv. edgeLookup vektor, ve kterém se z trojuhelníků 
+vytvoří seřazená množina hran s třetím nehranovým vrcholem a id trojuhelníku. Hrany jsou seřazeny
+ podle vrcholu 1, pak vrcholu 2 a nakonec podle id trojuhelníku. Toto seřazení umožňuje aby každou 
+sdílenou hranu pak zpracovával jen jeden trojuhelník (ten s nejnižším id).
 
-Implementace algoritmu se v jednotliv�ch implementac�ch p?�li� neli��. Ve v�ech p?�padech jsou na
-vstupu vrcholy modelu, element vektor definuj�c� jednotliv� trojuheln�ky, edgeLookup, pozice sv?tla a 
-po�adovan� d�lka extrudovan�ho st�nu. V compute a geometry shaderech jsou tyto data v SSBO struktur�ch
-(krom? pozice sv?tla a d�lky st�nu - ty jsou oby?ejn� uniformy).
+Implementace algoritmu se v jednotlivých implementacích příliš neliší. Ve všech případech jsou na
+vstupu vrcholy modelu, element vektor definující jednotlivé trojuhelníky, edgeLookup, pozice světla a 
+požadovaná délka extrudovaného stínu. V compute a geometry shaderech jsou tyto data v SSBO strukturách
+(kromě pozice světla a délky stínu - ty jsou obyčejné uniformy).
  
-Pro ka�d� trojuheln�k, pokud je p?ivr�cen� ke sv?tlu, se vygeneruje nov� extrudovan� o p?�slu�nou vzd�lenost
-od sv?tla. Pro ka�dou jeho hranu se nalezne trojuheln�k s nejni���m indexem, kter� ji obsahuje a podle
-jeho orientace se nastav� multiplicita hrany (tj zda st�n generuje ?� nikoliv).
-Pokud je v�sledn� multiplicita nenulov�, vytvo?� se z p?�slu�n� hrany st?na objemov�ho t?lesa.
+Pro každý trojuhelník, pokud je přivrácený ke světlu, se vygeneruje nový extrudovaný o příslušnou vzdálenost
+od světla. Pro každou jeho hranu se nalezne trojuhelník s nejnižším indexem, který ji obsahuje a podle
+jeho orientace se nastaví multiplicita hrany (tj zda stín generuje či nikoliv).
+Pokud je výsledná multiplicita nenulová, vytvoří se z příslušné hrany stěna objemového tělesa.
 
 
 
-Postup kreslen� za?�n� vykreslen�m st�n?n�ch povrch? do hloubkov�ho bufferu, kter� je pou�it� p?i 
-z-fail generov�n� "stencil" textury st�n?. P?i z-fail algoritmu je z�pis do hloubkov�ho bufferu vypnut�
-a pro ka�d� fragment, kter� m� hloubku v?t�� ne� je aktu�ln? v hloubkov�m bufferu atomicky zap�e negativn�
-hodnotu sv� multiplicity (pro fragmenty orientovan� od kamery je tato hodnota ve v�sledku kladn� a pro
-fragmenty orientovan� ke kame?e z�porn�), do celo?�seln� "stencil" textury. Je tak� zapnut� early fragment test,
-jinak by atomick� operace prob?hly i pro fragmenty, kter� se budou zahazovat.
+Postup kreslení začíná vykreslením stíněných povrchů do hloubkového bufferu, který je použitý při 
+z-fail generování "stencil" textury stínů. Při z-fail algoritmu je zápis do hloubkového bufferu vypnutý
+a pro každý fragment, který má hloubku větší než je aktuální v hloubkovém bufferu atomicky zapíše negativní
+hodnotu své multiplicity (pro fragmenty orientované od kamery je tato hodnota ve výsledku kladná a pro
+fragmenty orientované ke kameře záporná), do celočíselné "stencil" textury. Je také zapnutý early fragment test,
+jinak by atomické operace prob?hly i pro fragmenty, které se budou zahazovat.
 
-Se z�skanou texturou se st�nem u� sta?� vykreslit znova st�n?n� p?edm?ty a pak st�n�c� p?edm?ty bez n�.
+Se získanou texturou se stínem už stačí vykreslit znova stíněné předměty a pak stínící předměty bez ní.
 
-Zaj�mav� ?e�en� probl�my:
-Pro atomick� load/store operace jsou podporov�ny pouze celo?�seln� form�ty textur r32i a r32ui.
-AMD m� opravdu probl�m s p?�m�m vyu�it�m hodnot ze SSBO pole, ale zkop�rov�n� do pomocn� prom?nn� tento probl�m obejde.
-Padding vstupn�ch dat je opravdu pot?eba. Dlouho n�s ani nenapadlo tam hledat chybu a v?bec se t�m zab�vat. 
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-\section{Ovl�d�n��}
-
-T - zapne vykreslov�n� objemov�ch t?les
-C - p?ep�n� mezi metodami generov�n� objemov�ch t?les
-I - zapne zobrazen� statistik b?hu programu
-R - zastav� rotaci sc�ny
-My� - rotace okolo po?�tku sc�ny
-Kole?ko - p?ibl�en�/odd�len� pohledu ve sc�n?
-Esc - ukon?� b?h openGL programu, Enter potom cel� aplikace
+Zajímavé řešené problémy:
+Pro atomické load/store operace jsou podporovány pouze celočíselné formáty textur r32i a r32ui.
+AMD má opravdu problém s přímým využitím hodnot ze SSBO pole, ale zkopírování do pomocné proměnné tento problém obejde.
+Padding vstupních dat je opravdu potřeba. Dlouho nás ani nenapadlo tam hledat chybu a vůbec se tím zabývat. 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\section{Vyhodnocení}
+\section{Ovládání­}
 
-Tady by mělo být napsané jak to funguje. Protože se jedná o počítačovou grafiku nebo 
-vidění, tak by tady měl byt screenshot, ze ktereho bude poznat jak to funguje.
-K tomu by měla být idealně tabulka s vyhodnocením jak přesně/rychle to funguje. 
+T - zapne vykreslování objemových těles
+C - přepíná mezi metodami generování objemových těles
+I - zapne zobrazení statistik běhu programu
+R - zastaví rotaci scény
+Myš - rotace okolo počátku scény
+Kolečko - přiblížení/oddálení pohledu ve scén?
+Esc - ukončí běh openGL programu, Enter potom celé aplikace
 
-I p?es probl�my s AMD hardwarem se nakonec poda?ilo implementaci v compute shaderech zprovoznit.
-Probl�my byly v paddingu vstupn�ch struktur i samotn� implementaci algoritmu, kde se po?�taly
-n?kter� trojuheln�ky nav�c. 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Vyhodnocení­}
+
+Tady by mÄ›lo bÃ½t napsanÃ© jak to funguje. ProtoÅ¾e se jednÃ¡ o poÄÃ­taÄovou grafiku nebo 
+vidÄ›nÃ­, tak by tady mÄ›l byt screenshot, ze ktereho bude poznat jak to funguje.
+K tomu by mÄ›la bÃ½t idealnÄ› tabulka s vyhodnocenÃ­m jak pÅ™esnÄ›/rychle to funguje. 
+
+I přes problémy s AMD hardwarem se nakonec podařilo implementaci v compute shaderech zprovoznit.
+Problémy byly v paddingu vstupních struktur i samotné implementaci algoritmu, kde se počítaly
+některé trojuhelníky navíc. 
 
 ----Nejaka tabulka
 
@@ -144,10 +144,10 @@ n?kter� trojuheln�ky nav�c.
 
 \section{Závěr}
 
-Tady by mělo být stručně napsané jak to funguje.
+Tady by mÄ›lo bÃ½t struÄnÄ› napsanÃ© jak to funguje.
 
 --znova psat jak to funguje?? 
-Funguje to dle o?ek�v�n�. Pom?rn? dob?e. Nebyl ?as.
+Funguje to dle o?ekávání. Pom?rn? dob?e. Nebyl ?as.
 
 \bibliographystyle{alpha}
 \begin{flushleft}
