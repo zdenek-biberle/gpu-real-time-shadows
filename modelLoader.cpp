@@ -109,12 +109,10 @@ ModelInfo loadModel(const std::string& filename, std::vector<Vertex>& outVertice
 				if (tmp == "")  //! sure if neccesssary
 					break;
 
-				std::cout << tmp << " ";
 				tmp_vector.push_back(tmp);	//just save the line for future use in untangle..
 			}
 
 			faces.push_back(tmp_vector);   //should be only 3 in this case
-			std::cout << std::endl;
 		}
 		else if (mark.compare("vn") == 0){
 
@@ -261,6 +259,5 @@ void untangle(std::vector<glm::vec3> &vertices, std::vector<glm::vec3> &normals,
 				outIndices.push_back(found_vertex->second);
 			}
 		}
-		std::cout << std::endl;
 	}
 }

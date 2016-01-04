@@ -39,7 +39,7 @@ uniform mat4 mvMat;
 
 uniform uint indexCount;
 uniform float extrusionDistance = 100.0;
-uniform vec3 lightPos;
+uniform vec3 lightDir;
 
 in VertexOutput
 {
@@ -92,7 +92,7 @@ void main()
 		gl_PrimitiveIDIn,
 		indexCount,
 		extrusionDistance,
-		lightPos,
+		lightDir,
 		vertices,
 		indices);
 }
